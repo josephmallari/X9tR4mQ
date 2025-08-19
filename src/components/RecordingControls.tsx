@@ -34,7 +34,7 @@ const RecordingControls: React.FC<RecordingControlsProps> = ({
     <div className="audio-container">
       <div className="recording-status">
         <p>Status: {recordingState.status}</p>
-        <p>Duration: {formattedRecordingDuration}</p>
+        <p>{formattedRecordingDuration}</p>
       </div>
 
       <div className="audio-controls">

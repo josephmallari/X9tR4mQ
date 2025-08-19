@@ -1,12 +1,12 @@
-import React, { useCallback, useRef } from "react";
+import { useRef, useEffect } from "react";
 import "./App.css";
 import RecordingControls from "./components/RecordingControls";
 import PlaybackControls from "./components/PlaybackControls";
 import WaveformVisualizer from "./components/WaveformVisualizer";
-import TranscriptionDisplay from "./components/TranscriptionDisplay";
-import LiveTranscriptionDisplay from "./components/LiveTranscriptionDisplay";
 import type { WaveformVisualizerRef } from "./components/WaveformVisualizer";
 import { useAudioRecorder } from "./hooks/useAudioRecorder";
+import LiveTranscriptionDisplay from "./components/LiveTranscriptionDisplay";
+import TranscriptionDisplay from "./components/TranscriptionDisplay";
 
 function App() {
   const waveformRef = useRef<WaveformVisualizerRef>(null);
@@ -15,9 +15,9 @@ function App() {
     // State
     recordingState,
     playbackState,
-    transcriptionState,
-    liveTranscriptionState,
     audioElementRef,
+    transcriptionState, // ← Add this
+    liveTranscriptionState,
 
     // Recording functions
     startRecording,
@@ -33,12 +33,11 @@ function App() {
     stopPlayback,
     seekTo,
 
-    // Transcription functions
-    transcribeRecording,
+    transcribeRecording, // ← Add this
 
     // Live transcription functions
-    startLiveTranscription,
-    stopLiveTranscription,
+    startLiveTranscription, // ← Add this
+    stopLiveTranscription, // ← Add this
     clearLiveTranscription,
 
     // Audio event handlers
@@ -54,7 +53,7 @@ function App() {
   } = useAudioRecorder();
 
   // Set up waveform functions when component mounts
-  React.useEffect(() => {
+  useEffect(() => {
     if (waveformRef.current) {
       setWaveformFunctions(
         waveformRef.current.initializeAudioContext,
@@ -86,18 +85,18 @@ function App() {
         isRecording={recordingState.status === "recording"}
       />
 
+      <TranscriptionDisplay
+        transcriptionState={transcriptionState}
+        onTranscribe={transcribeRecording}
+        hasAudioChunks={recordingState.status === "idle" && recordingState.audioChunks.length > 0}
+      />
+
       <PlaybackControls
         playbackState={playbackState}
         onPlayRecording={playRecording}
         onPausePlayback={pausePlayback}
         onStopPlayback={stopPlayback}
         onSeekTo={seekTo}
-        hasAudioChunks={recordingState.status === "idle" && recordingState.audioChunks.length > 0}
-      />
-
-      <TranscriptionDisplay
-        transcriptionState={transcriptionState}
-        onTranscribe={transcribeRecording}
         hasAudioChunks={recordingState.status === "idle" && recordingState.audioChunks.length > 0}
       />
 
