@@ -1,0 +1,110 @@
+/* Live Transcription Styles */
+.live-transcription-section {
+  max-width: 600px;
+  margin: 20px auto;
+  padding: 20px;
+  background-color: #e8f5e8;
+  border-radius: 8px;
+  border: 1px solid #c3e6c3;
+}
+
+.live-transcription-section h3 {
+  margin: 0 0 15px 0;
+  color: #2d5a2d;
+  font-size: 18px;
+}
+
+.live-transcription-status {
+  margin-bottom: 15px;
+}
+
+.listening-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #2d5a2d;
+  font-weight: 500;
+}
+
+.listening-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #28a745;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.live-transcription-error {
+  padding: 10px;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 5px;
+  color: #721c24;
+  font-size: 14px;
+}
+
+.live-transcription-result {
+  margin-top: 15px;
+}
+
+.live-transcript-text {
+  background-color: white;
+  padding: 15px;
+  border-radius: 5px;
+  border: 1px solid #ddd;
+  color: #000;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  text-align: left;
+  font-size: 14px;
+  margin-bottom: 10px;
+  min-height: 60px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.clear-transcription-btn {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.clear-transcription-btn:hover:not(:disabled) {
+  background-color: #c82333;
+}
+
+.clear-transcription-btn:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.live-transcription-placeholder {
+  padding: 20px;
+  text-align: center;
+  color: #6c757d;
+  font-style: italic;
+  background-color: #f8f9fa;
+  border-radius: 5px;
+  border: 1px dashed #dee2e6;
+}

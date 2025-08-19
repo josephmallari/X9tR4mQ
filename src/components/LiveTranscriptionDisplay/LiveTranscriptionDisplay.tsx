@@ -1,5 +1,6 @@
 import React from "react";
 import type { LiveTranscriptionState } from "../types/audio";
+import "./LiveTranscriptionDisplay.css";
 
 interface LiveTranscriptionDisplayProps {
   liveTranscriptionState: LiveTranscriptionState;

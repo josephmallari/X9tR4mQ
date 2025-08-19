@@ -1,7 +1,8 @@
 import React from "react";
-import type { PlaybackState } from "../types/audio";
-import { formatDuration } from "../types/audio";
-import { Pause, Play, Square } from "lucide-react";
+import type { PlaybackState } from "../../types/audio";
+import { formatDuration } from "../../types/audio";
+import { Pause, Play } from "lucide-react";
+import "./PlaybackControls.css";
 
 interface PlaybackControlsProps {
   playbackState: PlaybackState;

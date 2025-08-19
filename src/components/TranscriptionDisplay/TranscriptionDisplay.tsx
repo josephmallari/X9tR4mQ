@@ -1,5 +1,6 @@
 import React from "react";
 import type { TranscriptionState } from "../types/audio";
+import "./TranscriptionDisplay.css";
 
 interface TranscriptionDisplayProps {
   transcriptionState: TranscriptionState;

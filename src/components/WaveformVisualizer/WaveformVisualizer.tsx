@@ -1,4 +1,5 @@
 import React, { useRef, useCallback, useEffect, useImperativeHandle, forwardRef } from "react";
+import "./WaveformVisualizer.css";
 
 export interface WaveformVisualizerRef {
   initializeAudioContext: () => void;

@@ -1,12 +1,12 @@
 import { useRef, useEffect } from "react";
 import "./App.css";
-import RecordingControls from "./components/RecordingControls";
-import PlaybackControls from "./components/PlaybackControls";
-import WaveformVisualizer from "./components/WaveformVisualizer";
-import type { WaveformVisualizerRef } from "./components/WaveformVisualizer";
+import RecordingControls from "./components/RecordingControls/RecordingControls";
+import PlaybackControls from "./components/PlaybackControls/PlaybackControls";
+import WaveformVisualizer from "./components/WaveformVisualizer/WaveformVisualizer";
+import type { WaveformVisualizerRef } from "./components/WaveformVisualizer/WaveformVisualizer";
 import { useAudioRecorder } from "./hooks/useAudioRecorder";
-import LiveTranscriptionDisplay from "./components/LiveTranscriptionDisplay";
-import TranscriptionDisplay from "./components/TranscriptionDisplay";
+import LiveTranscriptionDisplay from "./components/LiveTranscriptionDisplay/LiveTranscriptionDisplay";
+import TranscriptionDisplay from "./components/TranscriptionDisplay/TranscriptionDisplay";
 
 function App() {
   const waveformRef = useRef<WaveformVisualizerRef>(null);

@@ -1,0 +1,12 @@
+/* Waveform Visualizer Styles */
+.waveform-container {
+  margin: 0 auto 20px;
+  border-radius: 8px;
+}
+
+.waveform-canvas {
+  width: 100%;
+  height: 100px;
+  background-color: #ffffff;
+  border-radius: 4px;
+}
