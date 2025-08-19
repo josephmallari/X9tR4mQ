@@ -5,38 +5,136 @@
   text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.audio-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 30px;
+  border: 2px solid #e1e5e9;
+  border-radius: 12px;
+  background-color: #ffffff;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.recording-status {
+  text-align: center;
+  margin-bottom: 30px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.recording-status p {
+  margin: 8px 0;
+  font-size: 16px;
+  color: #495057;
 }
 
-.card {
-  padding: 2em;
+.recording-status p:first-child {
+  font-weight: bold;
+  color: #212529;
+  font-size: 18px;
 }
 
-.read-the-docs {
-  color: #888;
+.audio-controls {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.audio-controls button {
+  padding: 15px 30px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  min-width: 120px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.audio-controls button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.audio-controls button:active {
+  transform: translateY(0);
+}
+
+.record-btn {
+  background-color: #dc3545;
+  color: white;
+}
+
+.record-btn:hover {
+  background-color: #c82333;
+}
+
+.pause-btn {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.pause-btn:hover {
+  background-color: #e0a800;
+}
+
+.resume-btn {
+  background-color: #28a745;
+  color: white;
+}
+
+.resume-btn:hover {
+  background-color: #218838;
+}
+
+.stop-btn {
+  background-color: #6c757d;
+  color: white;
+}
+
+.stop-btn:hover {
+  background-color: #5a6268;
+}
+
+.download-btn {
+  background-color: #007bff;
+  color: white;
+}
+
+.download-btn:hover {
+  background-color: #0056b3;
+}
+
+.reset-btn {
+  background-color: #6c757d;
+  color: white;
+}
+
+.reset-btn:hover {
+  background-color: #5a6268;
+}
+
+.recording-info {
+  text-align: center;
+  padding: 20px;
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  border-radius: 8px;
+  color: #155724;
+}
+
+.recording-info p {
+  margin: 8px 0;
+  font-size: 16px;
+}
+
+.recording-info p:first-child {
+  font-weight: bold;
+  font-size: 18px;
 }
