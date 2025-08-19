@@ -1,0 +1,101 @@
+import React from "react";
+import type { RecordingState } from "../types/audio";
+import { formatDuration } from "../types/audio";
+
+interface RecordingControlsProps {
+  recordingState: RecordingState;
+  onStartRecording: () => void;
+  onStopRecording: () => void;
+  onPauseRecording: () => void;
+  onResumeRecording: () => void;
+  onResetRecording: () => void;
+  onDownloadRecording: () => void;
+}
+
+const RecordingControls: React.FC<RecordingControlsProps> = ({
+  recordingState,
+  onStartRecording,
+  onStopRecording,
+  onPauseRecording,
+  onResumeRecording,
+  onResetRecording,
+  onDownloadRecording,
+}) => {
+  const formattedRecordingDuration = React.useMemo(
+    () => formatDuration(recordingState.duration),
+    [recordingState.duration]
+  );
+
+  const audioChunksCount = React.useMemo(() => recordingState.audioChunks.length, [recordingState.audioChunks.length]);
+
+  return (
+    <div className="audio-container">
+      <div className="recording-status">
+        <p>Status: {recordingState.status}</p>
+        <p>Duration: {formattedRecordingDuration}</p>
+        <p>Chunks: {audioChunksCount}</p>
+      </div>
+
+      <div className="audio-controls">
+        {recordingState.status === "idle" && (
+          <button onClick={onStartRecording} className="record-btn">
+            Start Recording
+          </button>
+        )}
+
+        {recordingState.status === "recording" && (
+          <>
+            <button onClick={onPauseRecording} className="pause-btn">
+              Pause
+            </button>
+            <button onClick={onStopRecording} className="stop-btn">
+              Stop
+            </button>
+          </>
+        )}
+
+        {recordingState.status === "paused" && (
+          <>
+            <button onClick={onResumeRecording} className="resume-btn">
+              Resume
+            </button>
+            <button onClick={onStopRecording} className="stop-btn">
+              Stop
+            </button>
+          </>
+        )}
+
+        {recordingState.status === "idle" && recordingState.audioChunks.length > 0 && (
+          <>
+            <button onClick={onStartRecording} className="record-btn">
+              New Recording
+            </button>
+            <button onClick={onDownloadRecording} className="download-btn">
+              Download
+            </button>
+            <button onClick={onResetRecording} className="reset-btn">
+              Reset
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Download Button */}
+      {recordingState.status === "idle" && recordingState.audioChunks.length > 0 && (
+        <div className="recording-info">
+          <p>Recording completed! You can download the audio file.</p>
+          <p>File size: {recordingState.audioChunks.reduce((total, chunk) => total + chunk.size, 0)} bytes</p>
+        </div>
+      )}
+
+      {/* Processing Message */}
+      {recordingState.status === "processing" && (
+        <div className="recording-info">
+          <p>Processing recording...</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default RecordingControls;
