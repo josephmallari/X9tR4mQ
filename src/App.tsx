@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import "./App.css";
 
 // Types for recording state
@@ -147,21 +147,21 @@ function App() {
     (audioChunks: Blob[]) => {
       if (audioChunks.length === 0) return null;
 
-      // Revoke previous URL to prevent memory leaks
-      if (playbackState.audioUrl) {
-        URL.revokeObjectURL(playbackState.audioUrl);
-      }
-
       const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
       return URL.createObjectURL(audioBlob);
     },
-    [playbackState.audioUrl]
+    [] // Remove dependency on playbackState.audioUrl
   );
 
   const playRecording = useCallback(() => {
     if (recordingState.audioChunks.length === 0) {
       alert("No audio to play");
       return;
+    }
+
+    // Revoke previous URL to prevent memory leaks
+    if (playbackState.audioUrl) {
+      URL.revokeObjectURL(playbackState.audioUrl);
     }
 
     const audioUrl = createAudioUrl(recordingState.audioChunks);
@@ -183,7 +183,7 @@ function App() {
         setPlaybackState((prev) => ({ ...prev, status: "idle" }));
       });
     }
-  }, [recordingState.audioChunks, createAudioUrl]);
+  }, [recordingState.audioChunks, createAudioUrl, playbackState.audioUrl]);
 
   const pausePlayback = useCallback(() => {
     if (audioElementRef.current) {
@@ -249,6 +249,30 @@ function App() {
     console.error("Audio playback error");
     setPlaybackState((prev) => ({ ...prev, status: "idle" }));
   }, []);
+
+  const handleProgressClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const percentage = clickX / rect.width;
+      const newTime = percentage * playbackState.duration;
+      seekTo(newTime / 1000); // Convert back to seconds
+    },
+    [playbackState.duration, seekTo]
+  );
+
+  const progressFillWidth = useMemo(() => {
+    if (playbackState.duration === 0) return 0;
+    return (playbackState.currentTime / playbackState.duration) * 100;
+  }, [playbackState.currentTime, playbackState.duration]);
+
+  const formattedCurrentTime = useMemo(() => formatDuration(playbackState.currentTime), [playbackState.currentTime]);
+
+  const formattedDuration = useMemo(() => formatDuration(playbackState.duration), [playbackState.duration]);
+
+  const formattedRecordingDuration = useMemo(() => formatDuration(recordingState.duration), [recordingState.duration]);
+
+  const audioChunksCount = useMemo(() => recordingState.audioChunks.length, [recordingState.audioChunks.length]);
 
   // Start recording
   const startRecording = useCallback(async () => {
@@ -330,20 +354,41 @@ function App() {
 
       mediaRecorder.onstop = () => {
         console.log("Recording stopped");
-        setRecordingState((prev) => ({
-          ...prev,
-          status: "idle",
-        }));
-
-        // Create audio URL for playback
-        if (recordingState.audioChunks.length > 0) {
-          const audioUrl = createAudioUrl(recordingState.audioChunks);
-          setPlaybackState((prev) => ({
+        setRecordingState((prev) => {
+          const newState = {
             ...prev,
-            audioUrl,
-            duration: 0, // Will be set when audio loads
-          }));
-        }
+            status: "processing" as const,
+          };
+
+          // Create audio URL for playback if we have chunks
+          if (prev.audioChunks.length > 0) {
+            // Use setTimeout to avoid blocking the UI
+            setTimeout(() => {
+              const audioUrl = createAudioUrl(prev.audioChunks);
+              setPlaybackState((playbackPrev) => ({
+                ...playbackPrev,
+                audioUrl,
+                duration: 0, // Will be set when audio loads
+              }));
+
+              // Now set status to idle after processing is complete
+              setRecordingState((currentPrev) => ({
+                ...currentPrev,
+                status: "idle" as const,
+              }));
+            }, 0);
+          } else {
+            // If no chunks, immediately set to idle
+            setTimeout(() => {
+              setRecordingState((currentPrev) => ({
+                ...currentPrev,
+                status: "idle" as const,
+              }));
+            }, 0);
+          }
+
+          return newState;
+        });
       };
 
       mediaRecorder.onerror = (event) => {
@@ -359,12 +404,12 @@ function App() {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       alert(`Could not access microphone: ${errorMessage}`);
     }
-  }, [initializeAudioContext, startWaveform, recordingState.audioChunks, createAudioUrl]);
+  }, [initializeAudioContext, startWaveform]); // Remove recordingState.audioChunks and createAudioUrl
 
   // Stop recording
   const stopRecording = useCallback(() => {
     console.log("Stop recording called");
-    if (mediaRecorderRef.current && recordingState.status === "recording") {
+    if (mediaRecorderRef.current && (recordingState.status === "recording" || recordingState.status === "paused")) {
       console.log("Stopping MediaRecorder...");
       mediaRecorderRef.current.stop();
 
@@ -383,7 +428,7 @@ function App() {
         audioStreamRef.current = null;
       }
     } else {
-      console.log("Cannot stop - not currently recording");
+      console.log("Cannot stop - not currently recording or paused");
     }
   }, [recordingState.status, stopWaveform]);
 
@@ -474,7 +519,7 @@ function App() {
       durationIntervalRef.current = null;
     }
 
-    // Stop all tracks
+    // Stop audio tracks
     if (audioStreamRef.current) {
       audioStreamRef.current.getTracks().forEach((track) => track.stop());
       audioStreamRef.current = null;
@@ -489,17 +534,19 @@ function App() {
       audioChunks: [],
     });
 
-    // Reset playback state
-    if (playbackState.audioUrl) {
-      URL.revokeObjectURL(playbackState.audioUrl);
-    }
-    setPlaybackState({
-      status: "idle",
-      currentTime: 0,
-      duration: 0,
-      audioUrl: null,
+    // Reset playback state and cleanup URL
+    setPlaybackState((prev) => {
+      if (prev.audioUrl) {
+        URL.revokeObjectURL(prev.audioUrl);
+      }
+      return {
+        status: "idle",
+        currentTime: 0,
+        duration: 0,
+        audioUrl: null,
+      };
     });
-  }, [stopWaveform, playbackState.audioUrl]);
+  }, [stopWaveform]);
 
   // Cleanup on component unmount
   useEffect(() => {
@@ -517,7 +564,7 @@ function App() {
         clearInterval(durationIntervalRef.current);
       }
 
-      // Stop all tracks
+      // Stop audio tracks
       if (audioStreamRef.current) {
         audioStreamRef.current.getTracks().forEach((track) => track.stop());
       }
@@ -528,11 +575,14 @@ function App() {
       }
 
       // Revoke audio URL
-      if (playbackState.audioUrl) {
-        URL.revokeObjectURL(playbackState.audioUrl);
-      }
+      setPlaybackState((prev) => {
+        if (prev.audioUrl) {
+          URL.revokeObjectURL(prev.audioUrl);
+        }
+        return prev;
+      });
     };
-  }, [stopWaveform, playbackState.audioUrl]);
+  }, [stopWaveform]);
 
   return (
     <>
@@ -543,8 +593,8 @@ function App() {
       <div className="audio-container">
         <div className="recording-status">
           <p>Status: {recordingState.status}</p>
-          <p>Duration: {formatDuration(recordingState.duration)}</p>
-          <p>Chunks: {recordingState.audioChunks.length}</p>
+          <p>Duration: {formattedRecordingDuration}</p>
+          <p>Chunks: {audioChunksCount}</p>
         </div>
 
         <div className="audio-controls">
@@ -592,7 +642,7 @@ function App() {
         </div>
 
         {/* Playback Section */}
-        {recordingState.audioChunks.length > 0 && (
+        {recordingState.status === "idle" && recordingState.audioChunks.length > 0 && (
           <div className="playback-section">
             <h3>Playback</h3>
             <div className="playback-controls">
@@ -613,25 +663,16 @@ function App() {
             {/* Progress Bar */}
             {playbackState.duration > 0 && (
               <div className="progress-container">
-                <div
-                  className="progress-bar clickable-progress"
-                  onClick={(e) => {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const clickX = e.clientX - rect.left;
-                    const percentage = clickX / rect.width;
-                    const newTime = percentage * playbackState.duration;
-                    seekTo(newTime / 1000); // Convert back to seconds
-                  }}
-                >
+                <div className="progress-bar clickable-progress" onClick={handleProgressClick}>
                   <div
                     className="progress-fill"
                     style={{
-                      width: `${(playbackState.currentTime / playbackState.duration) * 100}%`,
+                      width: `${progressFillWidth}%`,
                     }}
                   />
                 </div>
                 <div className="time-display">
-                  {formatDuration(playbackState.currentTime)} / {formatDuration(playbackState.duration)}
+                  {formattedCurrentTime} / {formattedDuration}
                 </div>
               </div>
             )}
@@ -639,10 +680,17 @@ function App() {
         )}
 
         {/* Download Button */}
-        {recordingState.audioChunks.length > 0 && (
+        {recordingState.status === "idle" && recordingState.audioChunks.length > 0 && (
           <div className="recording-info">
             <p>Recording completed! You can download the audio file.</p>
             <p>File size: {recordingState.audioChunks.reduce((total, chunk) => total + chunk.size, 0)} bytes</p>
+          </div>
+        )}
+
+        {/* Processing Message */}
+        {recordingState.status === "processing" && (
+          <div className="recording-info">
+            <p>Processing recording...</p>
           </div>
         )}
       </div>
