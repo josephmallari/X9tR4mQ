@@ -18,7 +18,7 @@ const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({
 
   return (
     <div className="transcription-section">
-      <h3>Transcription</h3>
+      <h3>Save Transcription</h3>
 
       <div className="transcription-controls">
         <button
@@ -26,19 +26,19 @@ const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({
           disabled={transcriptionState.status === "transcribing"}
           className="transcribe-btn"
         >
-          {transcriptionState.status === "transcribing" ? "Transcribing..." : "Transcribe Audio"}
+          {transcriptionState.status === "transcribing" ? "Saving..." : "Save Live Transcription"}
         </button>
       </div>
 
       {transcriptionState.status === "transcribing" && (
         <div className="transcription-status">
-          <p>Transcribing your audio... Please wait.</p>
+          <p>Saving your live transcription... Please wait.</p>
         </div>
       )}
 
       {transcriptionState.status === "completed" && transcriptionState.transcript && (
         <div className="transcription-result">
-          <h4>Transcription Result:</h4>
+          <h4>Saved Transcription:</h4>
           <div className="transcript-text">{transcriptionState.transcript}</div>
         </div>
       )}
@@ -46,7 +46,7 @@ const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({
       {transcriptionState.status === "error" && transcriptionState.error && (
         <div className="transcription-error">
           <p>Error: {transcriptionState.error}</p>
-          <p>Note: Speech recognition requires microphone access and works best with clear audio.</p>
+          <p>Note: Live transcription requires microphone access and works best with clear audio.</p>
         </div>
       )}
     </div>

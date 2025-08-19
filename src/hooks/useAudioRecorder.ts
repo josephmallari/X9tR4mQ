@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { RecordingState, PlaybackState, TranscriptionState, LiveTranscriptionState } from "../types/audio";
-import { mockTranscribeAudio } from "../utils/mockTranscriptionAPI";
 
 // Type declarations for Web Speech API
 declare global {
@@ -43,12 +42,14 @@ export const useAudioRecorder = () => {
   // Refs for audio handling
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioStreamRef = useRef<MediaStream | null>(null);
+  const transcriptionStreamRef = useRef<MediaStream | null>(null);
   const durationIntervalRef = useRef<number | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
 
   // Live transcription refs
   const liveRecognitionRef = useRef<any>(null);
   const liveTranscriptionIntervalRef = useRef<number | null>(null);
+  const lastTranscriptRef = useRef<string>("");
 
   // Waveform function refs (will be set by WaveformVisualizer)
   const initializeAudioContextRef = useRef<(() => void) | null>(null);
@@ -177,12 +178,26 @@ export const useAudioRecorder = () => {
         return;
       }
 
+      // Check if we have a transcription stream
+      if (!transcriptionStreamRef.current) {
+        console.warn("No transcription stream available");
+        return;
+      }
+
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
 
       recognition.continuous = true;
-      recognition.interimResults = true;
+      recognition.interimResults = false; // Disable interim results to prevent echo
       recognition.lang = "en-US";
+
+      // Add configuration to prevent echo and improve accuracy
+      recognition.maxAlternatives = 1;
+
+      // Set audio constraints to prevent echo
+      if (recognition.audioContext) {
+        recognition.audioContext.sampleRate = 16000;
+      }
 
       recognition.onstart = () => {
         console.log("Live transcription started");
@@ -195,22 +210,25 @@ export const useAudioRecorder = () => {
       };
 
       recognition.onresult = (event: any) => {
-        let interimTranscript = "";
         let finalTranscript = "";
 
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
             finalTranscript += transcript;
-          } else {
-            interimTranscript += transcript;
           }
         }
 
-        setLiveTranscriptionState((prev) => ({
-          ...prev,
-          transcript: prev.transcript + finalTranscript + interimTranscript,
-        }));
+        // Only update if we have new content and it's different from the last update
+        if (finalTranscript && finalTranscript !== lastTranscriptRef.current) {
+          console.log("New transcription:", finalTranscript);
+          lastTranscriptRef.current = finalTranscript;
+
+          setLiveTranscriptionState((prev) => ({
+            ...prev,
+            transcript: prev.transcript + finalTranscript + " ",
+          }));
+        }
       };
 
       recognition.onerror = (event: any) => {
@@ -272,55 +290,60 @@ export const useAudioRecorder = () => {
     try {
       console.log("Starting recording...");
 
-      // Check if MediaRecorder is supported
-      if (!window.MediaRecorder) {
-        throw new Error("MediaRecorder is not supported in this browser");
+      // Check if already recording
+      if (mediaRecorderRef.current) {
+        console.log("MediaRecorder already exists, stopping first");
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current = null;
       }
 
-      // Initialize audio context
+      // Get microphone access for recording with echo cancellation
+      const recordingStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 44100,
+          channelCount: 1, // Mono to reduce complexity
+        },
+        video: false,
+      });
+
+      // Get separate microphone access for transcription with different settings
+      const transcriptionStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: false, // Disable auto gain for transcription
+          sampleRate: 16000, // Lower sample rate for transcription
+          channelCount: 1,
+        },
+        video: false,
+      });
+
+      audioStreamRef.current = recordingStream;
+      transcriptionStreamRef.current = transcriptionStream;
+
+      // Initialize audio context for waveform
       if (initializeAudioContextRef.current) {
         initializeAudioContextRef.current();
       }
 
-      // Request microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 44100,
-        },
-      });
-
-      console.log("Microphone access granted");
-      audioStreamRef.current = stream;
-
-      // Start waveform visualization
+      // Start waveform visualization with recording stream
       if (startWaveformRef.current) {
-        startWaveformRef.current(stream);
+        startWaveformRef.current(recordingStream);
       }
 
-      // Find supported MIME type
-      const supportedTypes = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
-
-      let mimeType = "audio/webm;codecs=opus";
-      for (const type of supportedTypes) {
-        if (MediaRecorder.isTypeSupported(type)) {
-          mimeType = type;
-          console.log("Using MIME type:", mimeType);
-          break;
-        }
-      }
-
-      // Create MediaRecorder
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: mimeType,
+      // Create MediaRecorder with recording stream
+      const mediaRecorder = new MediaRecorder(recordingStream, {
+        mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm",
       });
 
       mediaRecorderRef.current = mediaRecorder;
 
       // Set up event handlers
       mediaRecorder.ondataavailable = (event) => {
-        console.log("Data available:", event.data.size, "bytes");
+        console.log("MediaRecorder data available, chunk size:", event.data.size);
         if (event.data.size > 0) {
           setRecordingState((prev) => ({
             ...prev,
@@ -340,8 +363,14 @@ export const useAudioRecorder = () => {
           audioChunks: [], // Reset chunks for new recording
         }));
 
-        // Start live transcription
-        startLiveTranscription();
+        // Clear any previous live transcription
+        clearLiveTranscription();
+        lastTranscriptRef.current = ""; // Reset the last transcript reference
+
+        // Start live transcription with a small delay to ensure audio stream is established
+        setTimeout(() => {
+          startLiveTranscription();
+        }, 500);
 
         // Start duration timer
         durationIntervalRef.current = window.setInterval(() => {
@@ -364,46 +393,36 @@ export const useAudioRecorder = () => {
       };
 
       mediaRecorder.onstop = () => {
-        console.log("Recording stopped");
+        console.log("MediaRecorder stopped");
         setRecordingState((prev) => {
-          const newState = {
-            ...prev,
-            status: "processing" as const,
-          };
+          const finalDuration = prev.duration;
+          console.log("Final recording duration:", finalDuration);
 
-          // Create audio URL for playback if we have chunks
-          if (prev.audioChunks.length > 0) {
-            // Use setTimeout to avoid blocking the UI
-            setTimeout(() => {
-              const audioUrl = createAudioUrl(prev.audioChunks);
+          // Create audio URL after a short delay to ensure all chunks are processed
+          setTimeout(() => {
+            setRecordingState((currentPrev) => {
+              const audioBlob = new Blob(currentPrev.audioChunks, { type: "audio/webm" });
+              const audioUrl = URL.createObjectURL(audioBlob);
 
-              // Use the recording duration directly from the state
-              const recordingDuration = prev.duration;
-              console.log("Setting playback duration:", recordingDuration);
+              console.log("Created audio URL, blob size:", audioBlob.size);
 
               setPlaybackState((playbackPrev) => ({
                 ...playbackPrev,
                 audioUrl,
-                duration: recordingDuration, // Set the duration immediately from recording
+                duration: finalDuration,
               }));
 
-              // Now set status to idle after processing is complete
-              setRecordingState((currentPrev) => ({
+              return {
                 ...currentPrev,
-                status: "idle" as const,
-              }));
-            }, 0);
-          } else {
-            // If no chunks, immediately set to idle
-            setTimeout(() => {
-              setRecordingState((currentPrev) => ({
-                ...currentPrev,
-                status: "idle" as const,
-              }));
-            }, 0);
-          }
+                status: "idle",
+              };
+            });
+          }, 100);
 
-          return newState;
+          return {
+            ...prev,
+            status: "processing",
+          };
         });
       };
 
@@ -412,15 +431,18 @@ export const useAudioRecorder = () => {
         alert("Recording error occurred. Please try again.");
       };
 
-      // Start recording
-      mediaRecorder.start(1000); // Collect data every second
+      // Start recording with a longer timeslice to reduce frequent chunks
+      mediaRecorder.start(1000); // 1 second chunks instead of default
       console.log("MediaRecorder started");
     } catch (error) {
       console.error("Error starting recording:", error);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      let errorMessage = "Unknown error occurred";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
       alert(`Could not access microphone: ${errorMessage}`);
     }
-  }, [createAudioUrl]);
+  }, [clearLiveTranscription, startLiveTranscription]);
 
   // Stop recording
   const stopRecording = useCallback(() => {
@@ -443,10 +465,15 @@ export const useAudioRecorder = () => {
         durationIntervalRef.current = null;
       }
 
-      // Stop all tracks
+      // Stop all tracks from both streams
       if (audioStreamRef.current) {
         audioStreamRef.current.getTracks().forEach((track) => track.stop());
         audioStreamRef.current = null;
+      }
+
+      if (transcriptionStreamRef.current) {
+        transcriptionStreamRef.current.getTracks().forEach((track) => track.stop());
+        transcriptionStreamRef.current = null;
       }
     } else {
       console.log("Cannot stop - not currently recording or paused");
@@ -506,46 +533,49 @@ export const useAudioRecorder = () => {
     }
   }, [recordingState.status, recordingState.pausedTime]);
 
-  // Transcribe recorded audio using mock API
+  // Transcribe recording
   const transcribeRecording = useCallback(async () => {
     if (recordingState.audioChunks.length === 0) {
-      alert("No audio to transcribe");
+      console.log("No audio to transcribe");
       return;
     }
 
-    console.log("Starting transcription...");
+    console.log("Saving live transcription...");
     setTranscriptionState((prev) => ({
       ...prev,
       status: "transcribing",
-      transcript: "",
       error: null,
     }));
 
     try {
-      // Create audio blob
-      const audioBlob = new Blob(recordingState.audioChunks, { type: "audio/webm" });
+      // Use the live transcription that was captured during recording
+      const liveTranscript = liveTranscriptionState.transcript;
 
-      console.log("Calling mock transcription API...");
-      // Use mock transcription API
-      const result = await mockTranscribeAudio(audioBlob, recordingState.duration);
-
-      console.log("Transcription result:", result);
-      setTranscriptionState((prev) => ({
-        ...prev,
-        status: "completed",
-        transcript: result.transcript,
-      }));
-
-      console.log("Transcription completed:", result);
+      if (liveTranscript) {
+        console.log("Live transcription saved:", liveTranscript);
+        setTranscriptionState({
+          status: "completed",
+          transcript: liveTranscript,
+          error: null,
+        });
+      } else {
+        console.log("No live transcription available");
+        setTranscriptionState({
+          status: "error",
+          transcript: "",
+          error:
+            "No live transcription was captured during recording. Please ensure microphone access is granted and try recording again.",
+        });
+      }
     } catch (error) {
-      console.error("Transcription error:", error);
-      setTranscriptionState((prev) => ({
-        ...prev,
+      console.error("Error saving transcription:", error);
+      setTranscriptionState({
         status: "error",
-        error: error instanceof Error ? error.message : "Unknown error",
-      }));
+        transcript: "",
+        error: error instanceof Error ? error.message : "Failed to save transcription",
+      });
     }
-  }, [recordingState.audioChunks, recordingState.duration]);
+  }, [recordingState.audioChunks.length, liveTranscriptionState.transcript]);
 
   // Download recorded audio
   const downloadRecording = useCallback(() => {
@@ -568,59 +598,70 @@ export const useAudioRecorder = () => {
 
   // Reset recording
   const resetRecording = useCallback(() => {
-    console.log("Reset recording called");
+    console.log("Resetting recording...");
 
     // Stop any ongoing recording
-    if (mediaRecorderRef.current) {
+    if (mediaRecorderRef.current && (recordingState.status === "recording" || recordingState.status === "paused")) {
       mediaRecorderRef.current.stop();
     }
+
+    // Stop live transcription
+    stopLiveTranscription();
 
     // Stop waveform
     if (stopWaveformRef.current) {
       stopWaveformRef.current();
     }
 
-    // Clear interval
+    // Clear intervals
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
       durationIntervalRef.current = null;
     }
 
-    // Stop audio tracks
+    // Stop all tracks
     if (audioStreamRef.current) {
       audioStreamRef.current.getTracks().forEach((track) => track.stop());
       audioStreamRef.current = null;
     }
 
-    // Reset recording state
+    if (transcriptionStreamRef.current) {
+      transcriptionStreamRef.current.getTracks().forEach((track) => track.stop());
+      transcriptionStreamRef.current = null;
+    }
+
+    // Reset all state
     setRecordingState({
       status: "idle",
-      startTime: 0,
       duration: 0,
+      startTime: null,
       pausedTime: 0,
       audioChunks: [],
     });
 
-    // Reset playback state and cleanup URL
-    setPlaybackState((prev) => {
-      if (prev.audioUrl) {
-        URL.revokeObjectURL(prev.audioUrl);
-      }
-      return {
-        status: "idle",
-        currentTime: 0,
-        duration: 0,
-        audioUrl: null,
-      };
+    setPlaybackState({
+      status: "idle",
+      currentTime: 0,
+      duration: 0,
+      audioUrl: null,
     });
 
-    // Reset transcription state
     setTranscriptionState({
       status: "idle",
       transcript: "",
       error: null,
     });
-  }, []);
+
+    // Clear live transcription
+    clearLiveTranscription();
+
+    // Clear audio element
+    if (audioElementRef.current) {
+      audioElementRef.current.src = "";
+    }
+
+    console.log("Recording reset complete");
+  }, [recordingState.status, stopLiveTranscription, clearLiveTranscription]);
 
   // Set waveform function refs
   const setWaveformFunctions = useCallback(
