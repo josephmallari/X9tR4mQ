@@ -1,6 +1,7 @@
 import React from "react";
 import type { PlaybackState } from "../types/audio";
 import { formatDuration } from "../types/audio";
+import { Pause, Play, Square } from "lucide-react";
 
 interface PlaybackControlsProps {
   playbackState: PlaybackState;
@@ -15,7 +16,6 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   playbackState,
   onPlayRecording,
   onPausePlayback,
-  onStopPlayback,
   onSeekTo,
   hasAudioChunks,
 }) => {
@@ -52,16 +52,13 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
       <div className="playback-controls">
         {playbackState.status === "playing" ? (
           <button onClick={onPausePlayback} className="pause-playback-btn">
-            Pause
+            <Pause />
           </button>
         ) : (
           <button onClick={onPlayRecording} className="play-btn">
-            Play
+            <Play />
           </button>
         )}
-        <button onClick={onStopPlayback} className="stop-playback-btn">
-          Stop
-        </button>
       </div>
 
       {/* Progress Bar */}
