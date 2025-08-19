@@ -43,7 +43,7 @@ const LiveTranscriptionDisplay: React.FC<LiveTranscriptionDisplayProps> = ({
           <button
             onClick={onClearTranscription}
             className="clear-transcription-btn"
-            disabled={liveTranscriptionState.status === "listening"}
+            // disabled={liveTranscriptionState.status === "listening"}
           >
             Clear Transcription
           </button>

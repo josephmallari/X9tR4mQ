@@ -27,7 +27,7 @@ const WaveformVisualizer = forwardRef<WaveformVisualizerRef>((_, ref) => {
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#007bff";
+    ctx.strokeStyle = "rgb(0, 0, 255)"; // Blue stroke color
     ctx.lineWidth = 2;
 
     const sliceWidth = canvas.width / bufferLength;

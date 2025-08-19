@@ -50,7 +50,7 @@ const RecordingControls: React.FC<RecordingControlsProps> = ({
               <Pause />
             </button>
             <button onClick={onStopRecording} className="stop-btn">
-              End
+              End Recording
             </button>
           </>
         )}
@@ -61,7 +61,7 @@ const RecordingControls: React.FC<RecordingControlsProps> = ({
               <Play />
             </button>
             <button onClick={onStopRecording} className="stop-btn">
-              End
+              End Recording
             </button>
           </>
         )}
