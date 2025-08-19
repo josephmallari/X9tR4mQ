@@ -22,6 +22,13 @@ export interface TranscriptionState {
   error: string | null;
 }
 
+export interface LiveTranscriptionState {
+  status: "idle" | "listening" | "error";
+  transcript: string;
+  isListening: boolean;
+  error: string | null;
+}
+
 // Utility function for formatting duration
 export const formatDuration = (milliseconds: number): string => {
   // Handle invalid inputs

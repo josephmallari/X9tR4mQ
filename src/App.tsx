@@ -4,6 +4,7 @@ import RecordingControls from "./components/RecordingControls";
 import PlaybackControls from "./components/PlaybackControls";
 import WaveformVisualizer from "./components/WaveformVisualizer";
 import TranscriptionDisplay from "./components/TranscriptionDisplay";
+import LiveTranscriptionDisplay from "./components/LiveTranscriptionDisplay";
 import type { WaveformVisualizerRef } from "./components/WaveformVisualizer";
 import { useAudioRecorder } from "./hooks/useAudioRecorder";
 
@@ -15,6 +16,7 @@ function App() {
     recordingState,
     playbackState,
     transcriptionState,
+    liveTranscriptionState,
     audioElementRef,
 
     // Recording functions
@@ -33,6 +35,11 @@ function App() {
 
     // Transcription functions
     transcribeRecording,
+
+    // Live transcription functions
+    startLiveTranscription,
+    stopLiveTranscription,
+    clearLiveTranscription,
 
     // Audio event handlers
     handleAudioLoad,
@@ -71,6 +78,12 @@ function App() {
         onResumeRecording={resumeRecording}
         onResetRecording={resetRecording}
         onDownloadRecording={downloadRecording}
+      />
+
+      <LiveTranscriptionDisplay
+        liveTranscriptionState={liveTranscriptionState}
+        onClearTranscription={clearLiveTranscription}
+        isRecording={recordingState.status === "recording"}
       />
 
       <PlaybackControls

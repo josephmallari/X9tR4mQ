@@ -1,6 +1,14 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import type { RecordingState, PlaybackState, TranscriptionState } from "../types/audio";
+import type { RecordingState, PlaybackState, TranscriptionState, LiveTranscriptionState } from "../types/audio";
 import { mockTranscribeAudio } from "../utils/mockTranscriptionAPI";
+
+// Type declarations for Web Speech API
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
 
 export const useAudioRecorder = () => {
   // Recording state
@@ -25,11 +33,22 @@ export const useAudioRecorder = () => {
     error: null,
   });
 
+  const [liveTranscriptionState, setLiveTranscriptionState] = useState<LiveTranscriptionState>({
+    status: "idle",
+    transcript: "",
+    isListening: false,
+    error: null,
+  });
+
   // Refs for audio handling
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioStreamRef = useRef<MediaStream | null>(null);
   const durationIntervalRef = useRef<number | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
+
+  // Live transcription refs
+  const liveRecognitionRef = useRef<any>(null);
+  const liveTranscriptionIntervalRef = useRef<number | null>(null);
 
   // Waveform function refs (will be set by WaveformVisualizer)
   const initializeAudioContextRef = useRef<(() => void) | null>(null);
@@ -149,6 +168,105 @@ export const useAudioRecorder = () => {
     setPlaybackState((prev) => ({ ...prev, status: "idle" }));
   }, []);
 
+  // Live transcription functions
+  const startLiveTranscription = useCallback(() => {
+    try {
+      // Check if Web Speech API is available
+      if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+        console.warn("Web Speech API not available for live transcription");
+        return;
+      }
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = "en-US";
+
+      recognition.onstart = () => {
+        console.log("Live transcription started");
+        setLiveTranscriptionState((prev) => ({
+          ...prev,
+          status: "listening",
+          isListening: true,
+          error: null,
+        }));
+      };
+
+      recognition.onresult = (event: any) => {
+        let interimTranscript = "";
+        let finalTranscript = "";
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        setLiveTranscriptionState((prev) => ({
+          ...prev,
+          transcript: prev.transcript + finalTranscript + interimTranscript,
+        }));
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error("Live transcription error:", event.error);
+        setLiveTranscriptionState((prev) => ({
+          ...prev,
+          status: "error",
+          isListening: false,
+          error: event.error,
+        }));
+      };
+
+      recognition.onend = () => {
+        console.log("Live transcription ended");
+        setLiveTranscriptionState((prev) => ({
+          ...prev,
+          status: "idle",
+          isListening: false,
+        }));
+      };
+
+      liveRecognitionRef.current = recognition;
+      recognition.start();
+    } catch (error) {
+      console.error("Error starting live transcription:", error);
+      setLiveTranscriptionState((prev) => ({
+        ...prev,
+        status: "error",
+        isListening: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      }));
+    }
+  }, []);
+
+  const stopLiveTranscription = useCallback(() => {
+    if (liveRecognitionRef.current) {
+      liveRecognitionRef.current.stop();
+      liveRecognitionRef.current = null;
+    }
+
+    setLiveTranscriptionState((prev) => ({
+      ...prev,
+      status: "idle",
+      isListening: false,
+    }));
+  }, []);
+
+  const clearLiveTranscription = useCallback(() => {
+    setLiveTranscriptionState({
+      status: "idle",
+      transcript: "",
+      isListening: false,
+      error: null,
+    });
+  }, []);
+
   // Start recording
   const startRecording = useCallback(async () => {
     try {
@@ -221,6 +339,9 @@ export const useAudioRecorder = () => {
           duration: 0,
           audioChunks: [], // Reset chunks for new recording
         }));
+
+        // Start live transcription
+        startLiveTranscription();
 
         // Start duration timer
         durationIntervalRef.current = window.setInterval(() => {
@@ -308,6 +429,9 @@ export const useAudioRecorder = () => {
       console.log("Stopping MediaRecorder...");
       mediaRecorderRef.current.stop();
 
+      // Stop live transcription
+      stopLiveTranscription();
+
       // Stop waveform
       if (stopWaveformRef.current) {
         stopWaveformRef.current();
@@ -327,7 +451,7 @@ export const useAudioRecorder = () => {
     } else {
       console.log("Cannot stop - not currently recording or paused");
     }
-  }, [recordingState.status]);
+  }, [recordingState.status, stopLiveTranscription]);
 
   // Pause recording
   const pauseRecording = useCallback(() => {
@@ -546,6 +670,7 @@ export const useAudioRecorder = () => {
     recordingState,
     playbackState,
     transcriptionState,
+    liveTranscriptionState,
     audioElementRef,
 
     // Recording functions
@@ -564,6 +689,11 @@ export const useAudioRecorder = () => {
 
     // Transcription functions
     transcribeRecording,
+
+    // Live transcription functions
+    startLiveTranscription,
+    stopLiveTranscription,
+    clearLiveTranscription,
 
     // Audio event handlers
     handleAudioLoad,
