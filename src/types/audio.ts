@@ -16,6 +16,12 @@ export interface PlaybackState {
   audioUrl: string | null;
 }
 
+export interface TranscriptionState {
+  status: "idle" | "transcribing" | "completed" | "error";
+  transcript: string;
+  error: string | null;
+}
+
 // Utility function for formatting duration
 export const formatDuration = (milliseconds: number): string => {
   // Handle invalid inputs

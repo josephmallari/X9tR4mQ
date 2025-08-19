@@ -3,6 +3,7 @@ import "./App.css";
 import RecordingControls from "./components/RecordingControls";
 import PlaybackControls from "./components/PlaybackControls";
 import WaveformVisualizer from "./components/WaveformVisualizer";
+import TranscriptionDisplay from "./components/TranscriptionDisplay";
 import type { WaveformVisualizerRef } from "./components/WaveformVisualizer";
 import { useAudioRecorder } from "./hooks/useAudioRecorder";
 
@@ -13,6 +14,7 @@ function App() {
     // State
     recordingState,
     playbackState,
+    transcriptionState,
     audioElementRef,
 
     // Recording functions
@@ -28,6 +30,9 @@ function App() {
     pausePlayback,
     stopPlayback,
     seekTo,
+
+    // Transcription functions
+    transcribeRecording,
 
     // Audio event handlers
     handleAudioLoad,
@@ -74,6 +79,12 @@ function App() {
         onPausePlayback={pausePlayback}
         onStopPlayback={stopPlayback}
         onSeekTo={seekTo}
+        hasAudioChunks={recordingState.status === "idle" && recordingState.audioChunks.length > 0}
+      />
+
+      <TranscriptionDisplay
+        transcriptionState={transcriptionState}
+        onTranscribe={transcribeRecording}
         hasAudioChunks={recordingState.status === "idle" && recordingState.audioChunks.length > 0}
       />
 

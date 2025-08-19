@@ -27,13 +27,13 @@ const RecordingControls: React.FC<RecordingControlsProps> = ({
   );
 
   const audioChunksCount = React.useMemo(() => recordingState.audioChunks.length, [recordingState.audioChunks.length]);
+  console.log(audioChunksCount);
 
   return (
     <div className="audio-container">
       <div className="recording-status">
         <p>Status: {recordingState.status}</p>
         <p>Duration: {formattedRecordingDuration}</p>
-        <p>Chunks: {audioChunksCount}</p>
       </div>
 
       <div className="audio-controls">
@@ -67,9 +67,7 @@ const RecordingControls: React.FC<RecordingControlsProps> = ({
 
         {recordingState.status === "idle" && recordingState.audioChunks.length > 0 && (
           <>
-            <button onClick={onStartRecording} className="record-btn">
-              New Recording
-            </button>
+            <button onClick={onStartRecording}>New Recording</button>
             <button onClick={onDownloadRecording} className="download-btn">
               Download
             </button>
@@ -83,7 +81,7 @@ const RecordingControls: React.FC<RecordingControlsProps> = ({
       {/* Download Button */}
       {recordingState.status === "idle" && recordingState.audioChunks.length > 0 && (
         <div className="recording-info">
-          <p>Recording completed! You can download the audio file.</p>
+          <p>Recording completed! Download audio file.</p>
           <p>File size: {recordingState.audioChunks.reduce((total, chunk) => total + chunk.size, 0)} bytes</p>
         </div>
       )}

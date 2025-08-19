@@ -1,5 +1,13 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import type { RecordingState, PlaybackState } from "../types/audio";
+import type { RecordingState, PlaybackState, TranscriptionState } from "../types/audio";
+
+// Type declarations for Web Speech API
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
 
 export const useAudioRecorder = () => {
   // Recording state
@@ -16,6 +24,12 @@ export const useAudioRecorder = () => {
     currentTime: 0,
     duration: 0,
     audioUrl: null,
+  });
+
+  const [transcriptionState, setTranscriptionState] = useState<TranscriptionState>({
+    status: "idle",
+    transcript: "",
+    error: null,
   });
 
   // Refs for audio handling
@@ -365,6 +379,86 @@ export const useAudioRecorder = () => {
     }
   }, [recordingState.status, recordingState.pausedTime]);
 
+  // Transcribe recorded audio
+  const transcribeRecording = useCallback(async () => {
+    if (recordingState.audioChunks.length === 0) {
+      alert("No audio to transcribe");
+      return;
+    }
+
+    setTranscriptionState((prev) => ({
+      ...prev,
+      status: "transcribing",
+      transcript: "",
+      error: null,
+    }));
+
+    try {
+      // Check if Web Speech API is available
+      if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+        throw new Error("Speech recognition is not supported in this browser");
+      }
+
+      // Create audio blob and URL
+      const audioBlob = new Blob(recordingState.audioChunks, { type: "audio/webm" });
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      // Create audio element to play the recording
+      const audio = new Audio(audioUrl);
+
+      // Set up speech recognition
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+
+      recognition.continuous = true;
+      recognition.interimResults = false;
+      recognition.lang = "en-US";
+
+      let transcript = "";
+
+      recognition.onresult = (event: any) => {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+      };
+
+      recognition.onend = () => {
+        setTranscriptionState((prev) => ({
+          ...prev,
+          status: "completed",
+          transcript,
+        }));
+
+        // Cleanup
+        URL.revokeObjectURL(audioUrl);
+        audio.pause();
+      };
+
+      recognition.onerror = (event: any) => {
+        setTranscriptionState((prev) => ({
+          ...prev,
+          status: "error",
+          error: event.error,
+        }));
+
+        // Cleanup
+        URL.revokeObjectURL(audioUrl);
+        audio.pause();
+      };
+
+      // Start recognition and play audio
+      recognition.start();
+      audio.play();
+    } catch (error) {
+      console.error("Transcription error:", error);
+      setTranscriptionState((prev) => ({
+        ...prev,
+        status: "error",
+        error: error instanceof Error ? error.message : "Unknown error",
+      }));
+    }
+  }, [recordingState.audioChunks]);
+
   // Download recorded audio
   const downloadRecording = useCallback(() => {
     if (recordingState.audioChunks.length === 0) {
@@ -480,6 +574,7 @@ export const useAudioRecorder = () => {
     // State
     recordingState,
     playbackState,
+    transcriptionState,
     audioElementRef,
 
     // Recording functions
@@ -495,6 +590,9 @@ export const useAudioRecorder = () => {
     pausePlayback,
     stopPlayback,
     seekTo,
+
+    // Transcription functions
+    transcribeRecording,
 
     // Audio event handlers
     handleAudioLoad,
