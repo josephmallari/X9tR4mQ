@@ -1,13 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { RecordingState, PlaybackState, TranscriptionState } from "../types/audio";
-
-// Type declarations for Web Speech API
-declare global {
-  interface Window {
-    SpeechRecognition: any;
-    webkitSpeechRecognition: any;
-  }
-}
+import { mockTranscribeAudio } from "../utils/mockTranscriptionAPI";
 
 export const useAudioRecorder = () => {
   // Recording state
@@ -70,7 +63,6 @@ export const useAudioRecorder = () => {
       status: "playing",
       audioUrl,
       currentTime: 0,
-      // Preserve the duration we calculated
     }));
 
     // Set the audio source and play
@@ -232,10 +224,21 @@ export const useAudioRecorder = () => {
 
         // Start duration timer
         durationIntervalRef.current = window.setInterval(() => {
-          setRecordingState((prev) => ({
-            ...prev,
-            duration: Date.now() - startTime,
-          }));
+          setRecordingState((prev) => {
+            const newDuration = Date.now() - startTime;
+
+            // Check 4-hour limit (4 hours = 14,400,000 milliseconds)
+            if (newDuration >= 14400000) {
+              console.log("4-hour recording limit reached");
+              stopRecording();
+              return prev;
+            }
+
+            return {
+              ...prev,
+              duration: newDuration,
+            };
+          });
         }, 100);
       };
 
@@ -379,13 +382,14 @@ export const useAudioRecorder = () => {
     }
   }, [recordingState.status, recordingState.pausedTime]);
 
-  // Transcribe recorded audio
+  // Transcribe recorded audio using mock API
   const transcribeRecording = useCallback(async () => {
     if (recordingState.audioChunks.length === 0) {
       alert("No audio to transcribe");
       return;
     }
 
+    console.log("Starting transcription...");
     setTranscriptionState((prev) => ({
       ...prev,
       status: "transcribing",
@@ -394,61 +398,21 @@ export const useAudioRecorder = () => {
     }));
 
     try {
-      // Check if Web Speech API is available
-      if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
-        throw new Error("Speech recognition is not supported in this browser");
-      }
-
-      // Create audio blob and URL
+      // Create audio blob
       const audioBlob = new Blob(recordingState.audioChunks, { type: "audio/webm" });
-      const audioUrl = URL.createObjectURL(audioBlob);
 
-      // Create audio element to play the recording
-      const audio = new Audio(audioUrl);
+      console.log("Calling mock transcription API...");
+      // Use mock transcription API
+      const result = await mockTranscribeAudio(audioBlob, recordingState.duration);
 
-      // Set up speech recognition
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const recognition = new SpeechRecognition();
+      console.log("Transcription result:", result);
+      setTranscriptionState((prev) => ({
+        ...prev,
+        status: "completed",
+        transcript: result.transcript,
+      }));
 
-      recognition.continuous = true;
-      recognition.interimResults = false;
-      recognition.lang = "en-US";
-
-      let transcript = "";
-
-      recognition.onresult = (event: any) => {
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
-        }
-      };
-
-      recognition.onend = () => {
-        setTranscriptionState((prev) => ({
-          ...prev,
-          status: "completed",
-          transcript,
-        }));
-
-        // Cleanup
-        URL.revokeObjectURL(audioUrl);
-        audio.pause();
-      };
-
-      recognition.onerror = (event: any) => {
-        setTranscriptionState((prev) => ({
-          ...prev,
-          status: "error",
-          error: event.error,
-        }));
-
-        // Cleanup
-        URL.revokeObjectURL(audioUrl);
-        audio.pause();
-      };
-
-      // Start recognition and play audio
-      recognition.start();
-      audio.play();
+      console.log("Transcription completed:", result);
     } catch (error) {
       console.error("Transcription error:", error);
       setTranscriptionState((prev) => ({
@@ -457,7 +421,7 @@ export const useAudioRecorder = () => {
         error: error instanceof Error ? error.message : "Unknown error",
       }));
     }
-  }, [recordingState.audioChunks]);
+  }, [recordingState.audioChunks, recordingState.duration]);
 
   // Download recorded audio
   const downloadRecording = useCallback(() => {
@@ -524,6 +488,13 @@ export const useAudioRecorder = () => {
         duration: 0,
         audioUrl: null,
       };
+    });
+
+    // Reset transcription state
+    setTranscriptionState({
+      status: "idle",
+      transcript: "",
+      error: null,
     });
   }, []);
 

@@ -68,9 +68,9 @@ const RecordingControls: React.FC<RecordingControlsProps> = ({
         {recordingState.status === "idle" && recordingState.audioChunks.length > 0 && (
           <>
             <button onClick={onStartRecording}>New Recording</button>
-            <button onClick={onDownloadRecording} className="download-btn">
+            {/* <button onClick={onDownloadRecording} className="download-btn">
               Download
-            </button>
+            </button> */}
             <button onClick={onResetRecording} className="reset-btn">
               Reset
             </button>
@@ -80,10 +80,10 @@ const RecordingControls: React.FC<RecordingControlsProps> = ({
 
       {/* Download Button */}
       {recordingState.status === "idle" && recordingState.audioChunks.length > 0 && (
-        <div className="recording-info">
+        <button onClick={onDownloadRecording} className="recording-info">
           <p>Recording completed! Download audio file.</p>
           <p>File size: {recordingState.audioChunks.reduce((total, chunk) => total + chunk.size, 0)} bytes</p>
-        </div>
+        </button>
       )}
 
       {/* Processing Message */}
