@@ -38,8 +38,8 @@ Get mic access -> Start recording & waveform -> Start transcription -> Collect a
 ### Requirement fulfillments
 
 - **Waveform** - There can be libraries for this. I wanted to get to know the Web Audio API more so was a good reason to use.
-- **Duration Limit** - There is a check for 14400000ms which equates to 4 hours.
+- **Duration Limit** - There is a check for 14,400,000ms which equates to 4 hours.
 - **Transcription** - Instead of using a mock API, I just created a Live Transcription that can be saved. It's not the most accurate, but just a prototype.
-- **Export** - Due to time constraints, I was not able to create download logic for mp3, since I used MediaRecorder API, webm was the simplest file type for download. There are libraries like ffmpeg or lamejs.
+- **Export** - Due to time constraints, I was not able to create download logic for mp3, since I used MediaRecorder API, webm was the simplest file type for download. There are libraries like ffmpeg or lamejs to convert to mp3.
 - **Memory Management** - Audio is stored in 1 second chunks to prevent memory buildup
-- **Performance** - Web provides good compression.
+- **Performance** - Webm provides good compression.
