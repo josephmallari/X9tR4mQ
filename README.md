@@ -5,6 +5,9 @@ Bootstrapped with Vite
 ```npm install```  
 ```npm run dev```
 
+## Approach / System Design
+Get mic access -> Start recording & waveform -> Start transcription -> Collect audio chunks & live transcript -> Stop -> Download
+
 ## Technologies used
 
 ### Core Audio Technologies
