@@ -10,12 +10,9 @@ declare global {
 }
 
 export const useLiveTranscription = (
-  liveTranscriptionState: LiveTranscriptionState,
-  setLiveTranscriptionState: React.Dispatch<React.SetStateAction<LiveTranscriptionState>>,
-  clearLiveTranscription: () => void
+  setLiveTranscriptionState: React.Dispatch<React.SetStateAction<LiveTranscriptionState>>
 ) => {
   const liveRecognitionRef = useRef<any>(null);
-  const liveTranscriptionIntervalRef = useRef<number | null>(null);
   const lastTranscriptRef = useRef<string>("");
 
   const startLiveTranscription = useCallback(() => {

@@ -53,11 +53,8 @@ export const useAudioRecorder = () => {
   } = useAudioPlayback(playbackState, setPlaybackState, recordingState.audioChunks);
 
   // Use the live transcription hook
-  const { startLiveTranscription, stopLiveTranscription, resetLastTranscript } = useLiveTranscription(
-    liveTranscriptionState,
-    setLiveTranscriptionState,
-    clearLiveTranscription
-  );
+  const { startLiveTranscription, stopLiveTranscription, resetLastTranscript } =
+    useLiveTranscription(setLiveTranscriptionState);
 
   // Use the media recorder hook
   const { startRecording, stopRecording, pauseRecording, resumeRecording } = useMediaRecorder(
