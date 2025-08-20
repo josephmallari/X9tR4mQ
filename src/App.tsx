@@ -78,8 +78,8 @@ function App() {
 
       <LiveTranscriptionDisplay
         liveTranscriptionState={liveTranscriptionState}
+        recordingState={recordingState}
         onClearTranscription={clearLiveTranscription}
-        isRecording={recordingState.status === "recording"}
       />
 
       <TranscriptionDisplay

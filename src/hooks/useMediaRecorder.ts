@@ -202,6 +202,9 @@ export const useMediaRecorder = (
     if (mediaRecorderRef.current && recordingState.status === "recording") {
       mediaRecorderRef.current.pause();
 
+      // Stop live transcription
+      stopLiveTranscription();
+
       // Stop waveform
       if (stopWaveformRef.current) {
         stopWaveformRef.current();
@@ -216,7 +219,14 @@ export const useMediaRecorder = (
       setPausedTime(recordingState.duration);
       updateRecordingStatus("paused");
     }
-  }, [recordingState.status, recordingState.duration, setPausedTime, updateRecordingStatus, stopWaveformRef]);
+  }, [
+    recordingState.status,
+    recordingState.duration,
+    setPausedTime,
+    updateRecordingStatus,
+    stopWaveformRef,
+    stopLiveTranscription,
+  ]);
 
   const resumeRecording = useCallback(() => {
     console.log("Resume recording called");
@@ -236,6 +246,11 @@ export const useMediaRecorder = (
         updateRecordingDuration(newDuration);
       }, 100);
 
+      // Restart live transcription with a small delay to ensure audio stream is established
+      setTimeout(() => {
+        startLiveTranscription();
+      }, 500);
+
       updateRecordingStatus("recording");
     }
   }, [
@@ -244,6 +259,7 @@ export const useMediaRecorder = (
     updateRecordingDuration,
     updateRecordingStatus,
     startWaveformRef,
+    startLiveTranscription,
   ]);
 
   const resetRecording = useCallback(() => {

@@ -1,22 +1,20 @@
 import React from "react";
-import type { LiveTranscriptionState } from "../../types/audio";
+import type { LiveTranscriptionState, RecordingState } from "../../types/audio";
 import "./LiveTranscriptionDisplay.css";
 
 interface LiveTranscriptionDisplayProps {
   liveTranscriptionState: LiveTranscriptionState;
+  recordingState: RecordingState;
   onClearTranscription: () => void;
-  isRecording: boolean;
 }
 
 const LiveTranscriptionDisplay: React.FC<LiveTranscriptionDisplayProps> = ({
   liveTranscriptionState,
+  recordingState,
   onClearTranscription,
-  isRecording,
 }) => {
-  if (!isRecording) {
-    return null;
-  }
-
+  // Hide component when recording is not active (idle or processing)
+  if (recordingState.status === "idle" || recordingState.status === "processing") return null;
   return (
     <div className="live-transcription-section">
       <h3>Live Transcription</h3>
@@ -47,7 +45,7 @@ const LiveTranscriptionDisplay: React.FC<LiveTranscriptionDisplayProps> = ({
         </div>
       )}
 
-      {!liveTranscriptionState.transcript && liveTranscriptionState.status === "listening" && (
+      {!liveTranscriptionState.transcript && (
         <div className="live-transcription-placeholder">
           <p>Start speaking to see live transcription...</p>
         </div>
