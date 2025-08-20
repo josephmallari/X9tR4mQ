@@ -1,6 +1,9 @@
 # React Audio Recorder
 
-Bootstrapped with Vite
+Bootstrapped with Vite  
+
+```npm install```  
+```npm run dev```
 
 ## Technologies used
 
