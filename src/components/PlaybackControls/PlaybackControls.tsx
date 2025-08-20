@@ -26,7 +26,7 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
       const clickX = e.clientX - rect.left;
       const percentage = clickX / rect.width;
       const newTime = percentage * playbackState.duration;
-      onSeekTo(newTime / 1000); // Convert to seconds for audio element
+      onSeekTo(newTime / 1000);
     },
     [playbackState.duration, onSeekTo]
   );

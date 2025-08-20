@@ -3,7 +3,7 @@ import type { RecordingState } from "../types/audio";
 
 export const useMediaRecorder = (
   recordingState: RecordingState,
-  setRecordingState: React.Dispatch<React.SetStateAction<RecordingState>>,
+  _setRecordingState: React.Dispatch<React.SetStateAction<RecordingState>>,
   addAudioChunk: (chunk: Blob) => void,
   updateRecordingStatus: (status: RecordingState["status"]) => void,
   updateRecordingDuration: (duration: number) => void,
@@ -14,6 +14,8 @@ export const useMediaRecorder = (
   clearLiveTranscription: () => void,
   resetLastTranscript: () => void,
   setPlaybackState: React.Dispatch<React.SetStateAction<any>>,
+  updateDuration: (duration: number) => void,
+  initializeAudioContextRef: React.MutableRefObject<(() => void) | null>,
   startWaveformRef: React.MutableRefObject<((stream: MediaStream) => void) | null>,
   stopWaveformRef: React.MutableRefObject<(() => void) | null>
 ) => {
@@ -21,6 +23,7 @@ export const useMediaRecorder = (
   const audioStreamRef = useRef<MediaStream | null>(null);
   const transcriptionStreamRef = useRef<MediaStream | null>(null);
   const durationIntervalRef = useRef<number | null>(null);
+  const currentDurationRef = useRef<number>(0);
 
   const startRecording = useCallback(async () => {
     try {
@@ -59,6 +62,11 @@ export const useMediaRecorder = (
 
       audioStreamRef.current = recordingStream;
       transcriptionStreamRef.current = transcriptionStream;
+
+      // Initialize audio context for waveform
+      if (initializeAudioContextRef.current) {
+        initializeAudioContextRef.current();
+      }
 
       // Start waveform visualization with recording stream
       if (startWaveformRef.current) {
@@ -106,22 +114,19 @@ export const useMediaRecorder = (
             return;
           }
 
+          currentDurationRef.current = newDuration;
           updateRecordingDuration(newDuration);
         }, 100);
       };
 
       mediaRecorder.onstop = () => {
         console.log("MediaRecorder stopped");
-        const finalDuration = recordingState.duration;
+        const finalDuration = currentDurationRef.current;
         console.log("Final recording duration:", finalDuration);
 
         // Create audio URL after a short delay to ensure all chunks are processed
         setTimeout(() => {
-          setPlaybackState((playbackPrev: any) => ({
-            ...playbackPrev,
-            duration: finalDuration,
-          }));
-
+          updateDuration(finalDuration);
           updateRecordingStatus("idle");
         }, 100);
 
@@ -153,8 +158,8 @@ export const useMediaRecorder = (
     clearLiveTranscription,
     resetLastTranscript,
     setPlaybackState,
+    updateDuration,
     startWaveformRef,
-    recordingState.duration,
   ]);
 
   const stopRecording = useCallback(() => {

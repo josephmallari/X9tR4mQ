@@ -1,5 +1,5 @@
 import React from "react";
-import type { LiveTranscriptionState } from "../types/audio";
+import type { LiveTranscriptionState } from "../../types/audio";
 import "./LiveTranscriptionDisplay.css";
 
 interface LiveTranscriptionDisplayProps {
@@ -41,11 +41,7 @@ const LiveTranscriptionDisplay: React.FC<LiveTranscriptionDisplayProps> = ({
         <div className="live-transcription-result">
           <div className="live-transcript-text">{liveTranscriptionState.transcript}</div>
 
-          <button
-            onClick={onClearTranscription}
-            className="clear-transcription-btn"
-            // disabled={liveTranscriptionState.status === "listening"}
-          >
+          <button onClick={onClearTranscription} className="clear-transcription-btn">
             Clear Transcription
           </button>
         </div>

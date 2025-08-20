@@ -1,25 +1,25 @@
 import { useRef, useEffect } from "react";
-import "./App.css";
 import RecordingControls from "./components/RecordingControls/RecordingControls";
 import PlaybackControls from "./components/PlaybackControls/PlaybackControls";
 import WaveformVisualizer from "./components/WaveformVisualizer/WaveformVisualizer";
 import type { WaveformVisualizerRef } from "./components/WaveformVisualizer/WaveformVisualizer";
-import { useAudioRecorder } from "./hooks/useAudioRecorder";
 import LiveTranscriptionDisplay from "./components/LiveTranscriptionDisplay/LiveTranscriptionDisplay";
 import TranscriptionDisplay from "./components/TranscriptionDisplay/TranscriptionDisplay";
+import { useAudioRecorder } from "./hooks/useAudioRecorder";
+import "./App.css";
 
 function App() {
   const waveformRef = useRef<WaveformVisualizerRef>(null);
 
   const {
-    // State
+    // states
     recordingState,
     playbackState,
     audioElementRef,
-    transcriptionState, // ← Add this
+    transcriptionState,
     liveTranscriptionState,
 
-    // Recording functions
+    // recording functions
     startRecording,
     stopRecording,
     pauseRecording,
@@ -27,20 +27,17 @@ function App() {
     resetRecording,
     downloadRecording,
 
-    // Playback functions
+    // playback functions
     playRecording,
     pausePlayback,
     stopPlayback,
     seekTo,
 
-    transcribeRecording, // ← Add this
+    transcribeRecording,
 
-    // Live transcription functions
-    startLiveTranscription, // ← Add this
-    stopLiveTranscription, // ← Add this
     clearLiveTranscription,
 
-    // Audio event handlers
+    // audio event handlers
     handleAudioLoad,
     handleAudioPlay,
     handleAudioPause,
@@ -48,7 +45,7 @@ function App() {
     handleAudioEnded,
     handleAudioError,
 
-    // Waveform functions
+    // waveform functions
     setWaveformFunctions,
   } = useAudioRecorder();
 

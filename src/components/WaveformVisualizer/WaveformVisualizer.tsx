@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useEffect, useImperativeHandle, forwardRef } from "react";
+import { useRef, useCallback, useEffect, useImperativeHandle, forwardRef } from "react";
 import "./WaveformVisualizer.css";
 
 export interface WaveformVisualizerRef {
@@ -28,7 +28,7 @@ const WaveformVisualizer = forwardRef<WaveformVisualizerRef>((_, ref) => {
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = "rgb(0, 0, 255)"; // Blue stroke color
+    ctx.strokeStyle = "rgb(0, 0, 255)";
     ctx.lineWidth = 2;
 
     const sliceWidth = canvas.width / bufferLength;
@@ -50,7 +50,6 @@ const WaveformVisualizer = forwardRef<WaveformVisualizerRef>((_, ref) => {
     ctx.lineTo(canvas.width, canvas.height / 2);
     ctx.stroke();
 
-    // Continue animation
     animationFrameRef.current = requestAnimationFrame(drawWaveform);
   }, []);
 
@@ -67,11 +66,9 @@ const WaveformVisualizer = forwardRef<WaveformVisualizerRef>((_, ref) => {
     (stream: MediaStream) => {
       if (!audioContextRef.current || !analyserRef.current) return;
 
-      // Create source from stream
       sourceRef.current = audioContextRef.current.createMediaStreamSource(stream);
       sourceRef.current.connect(analyserRef.current);
 
-      // Start drawing
       drawWaveform();
     },
     [drawWaveform]

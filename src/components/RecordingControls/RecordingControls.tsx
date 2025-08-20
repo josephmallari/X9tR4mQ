@@ -1,7 +1,7 @@
 import React from "react";
 import type { RecordingState } from "../../types/audio";
 import { formatDuration } from "../../types/audio";
-import { Play, Square, Pause } from "lucide-react";
+import { Play, Pause } from "lucide-react";
 import "./RecordingControls.css";
 
 interface RecordingControlsProps {
