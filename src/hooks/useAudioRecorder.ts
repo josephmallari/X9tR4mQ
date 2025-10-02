@@ -5,6 +5,7 @@ import { useTranscriptionState } from "./useTranscriptionState";
 import { useAudioPlayback } from "./useAudioPlayback";
 import { useLiveTranscription } from "./useLiveTranscription";
 import { useMediaRecorder } from "./useMediaRecorder";
+import { useAudioSource } from "./useAudioSource";
 
 export const useAudioRecorder = () => {
   // Use the smaller, focused hooks
@@ -18,6 +19,9 @@ export const useAudioRecorder = () => {
     setRecordingStartTime,
     setPausedTime,
   } = useRecordingState();
+
+  // Audio source management
+  const { audioSource, updateAudioSource } = useAudioSource();
 
   const { playbackState, setPlaybackState, updateDuration, resetPlaybackState } = usePlaybackState();
 
@@ -73,7 +77,8 @@ export const useAudioRecorder = () => {
     updateDuration,
     initializeAudioContextRef,
     startWaveformRef,
-    stopWaveformRef
+    stopWaveformRef,
+    audioSource
   );
 
   // Transcribe recording
@@ -192,6 +197,7 @@ export const useAudioRecorder = () => {
     transcriptionState,
     liveTranscriptionState,
     audioElementRef,
+    audioSource,
 
     // Recording functions
     startRecording,
@@ -225,5 +231,8 @@ export const useAudioRecorder = () => {
 
     // Waveform functions
     setWaveformFunctions,
+
+    // Audio source functions
+    updateAudioSource,
   };
 };

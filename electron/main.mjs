@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain, desktopCapturer } from 'electron';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
 
@@ -14,6 +14,7 @@ async function createWindow() {
         height: 800,
         webPreferences: {
             contextIsolation: true,
+            nodeIntegration: false,
             preload: join(__dirname, 'preload.mjs')
         }
     })
@@ -27,6 +28,20 @@ async function createWindow() {
         await win.loadFile(indexHtml)
     }
 }
+
+// Handle desktop capturer sources request
+ipcMain.handle('get-desktop-sources', async (event, options = {}) => {
+    try {
+        const sources = await desktopCapturer.getSources({
+            types: ['audio'],
+            ...options
+        });
+        return sources;
+    } catch (error) {
+        console.error('Error getting desktop sources:', error);
+        throw error;
+    }
+});
 
 app.whenReady().then(createWindow);
 

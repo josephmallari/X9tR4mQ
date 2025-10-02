@@ -29,6 +29,29 @@ export interface LiveTranscriptionState {
   error: string | null;
 }
 
+// Desktop capturer types
+export interface DesktopSource {
+  id: string;
+  name: string;
+  thumbnail: any; // NativeImage from Electron
+}
+
+export type AudioSourceType = "microphone" | "desktop";
+
+export interface AudioSourceState {
+  type: AudioSourceType;
+  selectedDesktopSource?: DesktopSource;
+}
+
+// Extend window interface for Electron API
+declare global {
+  interface Window {
+    electronAPI?: {
+      getDesktopSources: (options?: { types: string[] }) => Promise<DesktopSource[]>;
+    };
+  }
+}
+
 // Utility function for formatting duration
 export const formatDuration = (milliseconds: number): string => {
   // Handle invalid inputs

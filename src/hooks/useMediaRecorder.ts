@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect } from "react";
-import type { RecordingState } from "../types/audio";
+import type { RecordingState, AudioSourceState } from "../types/audio";
 
 export const useMediaRecorder = (
   recordingState: RecordingState,
@@ -17,13 +17,69 @@ export const useMediaRecorder = (
   updateDuration: (duration: number) => void,
   initializeAudioContextRef: React.MutableRefObject<(() => void) | null>,
   startWaveformRef: React.MutableRefObject<((stream: MediaStream) => void) | null>,
-  stopWaveformRef: React.MutableRefObject<(() => void) | null>
+  stopWaveformRef: React.MutableRefObject<(() => void) | null>,
+  audioSource: AudioSourceState
 ) => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioStreamRef = useRef<MediaStream | null>(null);
   const transcriptionStreamRef = useRef<MediaStream | null>(null);
   const durationIntervalRef = useRef<number | null>(null);
   const currentDurationRef = useRef<number>(0);
+
+  // Helper function to get desktop audio stream
+  const getDesktopAudioStream = useCallback(async (): Promise<MediaStream> => {
+    if (!audioSource.selectedDesktopSource) {
+      throw new Error('No desktop audio source selected');
+    }
+
+    try {
+      // Use getDisplayMedia with the desktop source ID
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: false, // Keep system audio as is
+          autoGainControl: false,
+          sampleRate: 44100,
+          channelCount: 2, // Stereo for system audio
+        } as any,
+        video: false
+      } as any);
+
+      // On some platforms, we need to use getUserMedia with the source ID
+      if (!stream.getAudioTracks().length) {
+        const constraints = {
+          audio: {
+            mandatory: {
+              chromeMediaSource: 'desktop',
+              chromeMediaSourceId: audioSource.selectedDesktopSource.id,
+            }
+          } as any,
+          video: false
+        };
+        
+        return await navigator.mediaDevices.getUserMedia(constraints);
+      }
+
+      return stream;
+    } catch (error) {
+      console.error('Failed to get desktop audio stream:', error);
+      throw new Error('Failed to capture system audio. Make sure you grant permission and select an audio source.');
+    }
+  }, [audioSource.selectedDesktopSource]);
+
+  // Helper function to get microphone stream
+  const getMicrophoneStream = useCallback(async (): Promise<MediaStream> => {
+    return await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        sampleRate: 44100,
+        channelCount: 1, // Mono to reduce complexity
+      },
+      video: false,
+    });
+  }, []);
 
   const startRecording = useCallback(async () => {
     try {
@@ -36,29 +92,31 @@ export const useMediaRecorder = (
         mediaRecorderRef.current = null;
       }
 
-      // Get microphone access for recording with echo cancellation
-      const recordingStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 44100,
-          channelCount: 1, // Mono to reduce complexity
-        },
-        video: false,
-      });
+      // Get audio stream based on selected source
+      let recordingStream: MediaStream;
+      let transcriptionStream: MediaStream;
 
-      // Get separate microphone access for transcription with different settings
-      const transcriptionStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: false, // Disable auto gain for transcription
-          sampleRate: 16000, // Lower sample rate for transcription
-          channelCount: 1,
-        },
-        video: false,
-      });
+      if (audioSource.type === 'desktop') {
+        console.log('Getting desktop audio stream...');
+        recordingStream = await getDesktopAudioStream();
+        // For desktop audio, use the same stream for transcription but with different processing
+        transcriptionStream = recordingStream.clone();
+      } else {
+        console.log('Getting microphone stream...');
+        recordingStream = await getMicrophoneStream();
+        
+        // Get separate microphone access for transcription with different settings
+        transcriptionStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: false, // Disable auto gain for transcription
+            sampleRate: 16000, // Lower sample rate for transcription
+            channelCount: 1,
+          },
+          video: false,
+        });
+      }
 
       audioStreamRef.current = recordingStream;
       transcriptionStreamRef.current = transcriptionStream;
@@ -147,7 +205,7 @@ export const useMediaRecorder = (
       if (error instanceof Error) {
         errorMessage = error.message;
       }
-      alert(`Could not access microphone: ${errorMessage}`);
+      alert(`Could not access audio source: ${errorMessage}`);
     }
   }, [
     addAudioChunk,
@@ -160,6 +218,9 @@ export const useMediaRecorder = (
     setPlaybackState,
     updateDuration,
     startWaveformRef,
+    audioSource.type,
+    getDesktopAudioStream,
+    getMicrophoneStream,
   ]);
 
   const stopRecording = useCallback(() => {

@@ -5,6 +5,7 @@ import WaveformVisualizer from "./components/WaveformVisualizer/WaveformVisualiz
 import type { WaveformVisualizerRef } from "./components/WaveformVisualizer/WaveformVisualizer";
 import LiveTranscriptionDisplay from "./components/LiveTranscriptionDisplay/LiveTranscriptionDisplay";
 import TranscriptionDisplay from "./components/TranscriptionDisplay/TranscriptionDisplay";
+import { AudioSourceSelector } from "./components/AudioSourceSelector/AudioSourceSelector";
 import { useAudioRecorder } from "./hooks/useAudioRecorder";
 import "./App.css";
 
@@ -18,6 +19,7 @@ function App() {
     audioElementRef,
     transcriptionState,
     liveTranscriptionState,
+    audioSource,
 
     // recording functions
     startRecording,
@@ -47,6 +49,9 @@ function App() {
 
     // waveform functions
     setWaveformFunctions,
+
+    // audio source functions
+    updateAudioSource,
   } = useAudioRecorder();
 
   // Set up waveform functions when component mounts
@@ -63,6 +68,12 @@ function App() {
   return (
     <>
       <h1>React Audio Recorder</h1>
+
+      <AudioSourceSelector 
+        audioSource={audioSource}
+        onAudioSourceChange={updateAudioSource}
+        disabled={recordingState.status === "recording" || recordingState.status === "paused"}
+      />
 
       <WaveformVisualizer ref={waveformRef} />
 
