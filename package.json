@@ -4,10 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "web:dev": "vite",
+    "web:build": "tsc -b && vite build",
+    "web:preview": "vite preview",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "electron:dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron ./electron/main.mjs\"",
+    "electron:build": "npm run web:build && electron-builder"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",
@@ -27,6 +29,42 @@
     "globals": "^16.3.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.39.1",
-    "vite": "^7.1.2"
+    "vite": "^7.1.2",
+    "concurrently": "^9.0.1",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8",
+    "wait-on": "^8.0.2"
+  },
+  "build": {
+    "appId": "com.example.via",
+    "productName": "Via",
+    "files": [
+      "dist/**",
+      "electron/**"
+    ],
+    "directories": {
+      "buildResources": "build"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    },
+    "extraMetadata": {
+      "main": "electron/main.mjs"
+    }
   }
 }
