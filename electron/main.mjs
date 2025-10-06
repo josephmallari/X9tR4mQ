@@ -13,7 +13,7 @@ async function createWindow() {
         height: 800,
         webPreferences: {
             contextIsolation: true,
-            preload: join(__dirname, 'preload.mjs')
+            preload: join(__dirname, 'preload.js')
         }
     })
 
