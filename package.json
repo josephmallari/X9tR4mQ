@@ -9,7 +9,8 @@
     "web:preview": "vite preview",
     "lint": "eslint .",
     "electron:dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron ./electron/main.mjs\"",
-    "electron:build": "npm run web:build && electron-builder"
+    "electron:build": "npm run web:build && electron-builder",
+    "electron:build:zip": "npm run web:build && electron-builder --win zip --x64"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",
@@ -37,31 +38,25 @@
   },
   "build": {
     "appId": "com.example.via",
-    "productName": "Via",
+    "productName": "Via Audio Capture",
     "files": [
       "dist/**",
-      "electron/**"
+      "electron/**",
+      "!electron/preload.mjs"
     ],
     "directories": {
-      "buildResources": "build"
-    },
-    "mac": {
-      "target": [
-        "dmg",
-        "zip"
-      ]
+      "buildResources": "build",
+      "output": "dist-electron"
     },
     "win": {
       "target": [
-        "nsis",
-        "zip"
-      ]
-    },
-    "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ]
+        {
+          "target": "zip",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "requestedExecutionLevel": "asInvoker"
     },
     "extraMetadata": {
       "main": "electron/main.mjs"
