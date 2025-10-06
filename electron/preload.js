@@ -121,7 +121,38 @@ contextBridge.exposeInMainWorld('electronAPI', {
         try {
             console.log('Starting system audio capture...');
             
-            const stream = await window.electronAPI.getSystemAudioStream();
+            // Get system audio stream directly
+            if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+                throw new Error('getDisplayMedia not available in this context');
+            }
+            
+            console.log('Requesting system audio stream for capture...');
+            
+            const stream = await navigator.mediaDevices.getDisplayMedia({
+                audio: {
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false,
+                    sampleRate: 44100,
+                    channelCount: 2,
+                },
+                video: false
+            });
+            
+            console.log('System audio stream obtained for capture');
+            console.log('Audio tracks:', stream.getAudioTracks().length);
+            
+            // Log audio track details
+            stream.getAudioTracks().forEach((track, index) => {
+                console.log(`Audio track ${index}:`, {
+                    label: track.label,
+                    enabled: track.enabled,
+                    muted: track.muted,
+                    readyState: track.readyState,
+                    settings: track.getSettings(),
+                    constraints: track.getConstraints()
+                });
+            });
             
             // Create MediaRecorder for system audio
             const mediaRecorder = new MediaRecorder(stream, {
