@@ -75,10 +75,21 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       console.log('Starting system audio capture...');
       setState(prev => ({ ...prev, error: null, isCapturing: false }));
 
-      const { stream, mediaRecorder } = await window.electronAPI.startSystemAudioCapture();
+      const stream = await window.electronAPI.startSystemAudioCapture();
       
       streamRef.current = stream;
+      
+      // Create MediaRecorder in the renderer process to avoid serialization issues
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus',
+        audioBitsPerSecond: 128000
+      });
+      
       mediaRecorderRef.current = mediaRecorder;
+      
+      console.log('MediaRecorder created in renderer process');
+      console.log('MediaRecorder state:', mediaRecorder.state);
+      console.log('Supported MIME types:', MediaRecorder.isTypeSupported('audio/webm;codecs=opus'));
 
       // Set up MediaRecorder event handlers
       mediaRecorder.ondataavailable = (event) => {

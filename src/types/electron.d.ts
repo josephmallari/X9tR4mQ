@@ -3,7 +3,7 @@ export interface ElectronAPI {
   isSystemAudioAvailable: () => Promise<boolean>;
   detectSystemAudio: () => Promise<boolean>;
   getSystemAudioStream: () => Promise<MediaStream>;
-  startSystemAudioCapture: () => Promise<{ stream: MediaStream; mediaRecorder: MediaRecorder }>;
+  startSystemAudioCapture: () => Promise<MediaStream>;
   stopSystemAudioCapture: (stream: MediaStream, mediaRecorder: MediaRecorder) => void;
 }
 

@@ -116,7 +116,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
         }
     },
 
-    // Start system audio capture with MediaRecorder
+    // Start system audio capture - returns only the stream, MediaRecorder created in renderer
     startSystemAudioCapture: async () => {
         try {
             console.log('Starting system audio capture...');
@@ -154,20 +154,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
                 });
             });
             
-            // Create MediaRecorder for system audio
-            const mediaRecorder = new MediaRecorder(stream, {
-                mimeType: 'audio/webm;codecs=opus',
-                audioBitsPerSecond: 128000
-            });
+            // Return only the stream - MediaRecorder will be created in the renderer process
+            console.log('Returning stream for MediaRecorder creation in renderer');
             
-            console.log('MediaRecorder created for system audio');
-            console.log('MediaRecorder state:', mediaRecorder.state);
-            console.log('Supported MIME types:', MediaRecorder.isTypeSupported('audio/webm;codecs=opus'));
-            
-            return {
-                stream,
-                mediaRecorder
-            };
+            return stream;
         } catch (error) {
             console.error('Failed to start system audio capture:', error);
             throw error;
