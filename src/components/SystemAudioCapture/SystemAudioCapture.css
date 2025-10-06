@@ -1,0 +1,215 @@
+.system-audio-capture {
+  padding: 20px;
+  border: 2px solid #007bff;
+  border-radius: 12px;
+  margin: 20px 0;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+}
+
+.system-audio-capture h3 {
+  margin: 0 0 20px 0;
+  color: #007bff;
+  font-size: 1.4em;
+  text-align: center;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 10px;
+}
+
+.capture-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-light {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.status-light.stopped {
+  background-color: #6c757d;
+}
+
+.status-light.recording {
+  background-color: #dc3545;
+  animation: pulse 1.5s infinite;
+}
+
+.status-light.paused {
+  background-color: #ffc107;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.status-text {
+  font-weight: 600;
+  color: #495057;
+}
+
+.duration-display {
+  font-size: 1.2em;
+  color: #007bff;
+  font-weight: bold;
+}
+
+.recording-info {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: #e3f2fd;
+  border-radius: 6px;
+  border-left: 4px solid #2196f3;
+}
+
+.info-item {
+  font-size: 14px;
+  color: #1976d2;
+}
+
+.capture-controls {
+  margin-bottom: 20px;
+}
+
+.control-button {
+  padding: 12px 24px;
+  margin: 5px;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.control-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.control-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.start-button {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  font-size: 18px;
+  padding: 15px 30px;
+}
+
+.start-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #218838 0%, #1aa179 100%);
+}
+
+.recording-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.pause-button {
+  background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+  color: white;
+}
+
+.pause-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #e0a800 0%, #e8590c 100%);
+}
+
+.stop-button {
+  background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);
+  color: white;
+}
+
+.stop-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #c82333 0%, #d63384 100%);
+}
+
+.post-capture-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 15px;
+}
+
+.download-button {
+  background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+  color: white;
+}
+
+.download-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0056b3 0%, #520dc2 100%);
+}
+
+.reset-button {
+  background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+  color: white;
+}
+
+.reset-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #5a6268 0%, #343a40 100%);
+}
+
+.error-message {
+  color: #dc3545;
+  font-size: 14px;
+  margin: 15px 0;
+  padding: 12px;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 6px;
+  border-left: 4px solid #dc3545;
+}
+
+.instructions {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 6px;
+  border-left: 4px solid #ffc107;
+}
+
+.instructions h4 {
+  margin: 0 0 10px 0;
+  color: #856404;
+  font-size: 1.1em;
+}
+
+.instructions ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #856404;
+}
+
+.instructions li {
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.instructions li:last-child {
+  margin-bottom: 0;
+  font-weight: bold;
+}

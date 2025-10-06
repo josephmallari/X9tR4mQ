@@ -81,6 +81,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
                 throw new Error('getDisplayMedia not available in this context');
             }
             
+            console.log('Requesting system audio stream for capture...');
+            
             const stream = await navigator.mediaDevices.getDisplayMedia({
                 audio: {
                     echoCancellation: false,
@@ -93,10 +95,73 @@ contextBridge.exposeInMainWorld('electronAPI', {
             });
             
             console.log('System audio stream obtained for capture');
+            console.log('Audio tracks:', stream.getAudioTracks().length);
+            
+            // Log audio track details
+            stream.getAudioTracks().forEach((track, index) => {
+                console.log(`Audio track ${index}:`, {
+                    label: track.label,
+                    enabled: track.enabled,
+                    muted: track.muted,
+                    readyState: track.readyState,
+                    settings: track.getSettings(),
+                    constraints: track.getConstraints()
+                });
+            });
+            
             return stream;
         } catch (error) {
             console.error('Failed to get system audio stream:', error);
             throw error;
+        }
+    },
+
+    // Start system audio capture with MediaRecorder
+    startSystemAudioCapture: async () => {
+        try {
+            console.log('Starting system audio capture...');
+            
+            const stream = await window.electronAPI.getSystemAudioStream();
+            
+            // Create MediaRecorder for system audio
+            const mediaRecorder = new MediaRecorder(stream, {
+                mimeType: 'audio/webm;codecs=opus',
+                audioBitsPerSecond: 128000
+            });
+            
+            console.log('MediaRecorder created for system audio');
+            console.log('MediaRecorder state:', mediaRecorder.state);
+            console.log('Supported MIME types:', MediaRecorder.isTypeSupported('audio/webm;codecs=opus'));
+            
+            return {
+                stream,
+                mediaRecorder
+            };
+        } catch (error) {
+            console.error('Failed to start system audio capture:', error);
+            throw error;
+        }
+    },
+
+    // Stop system audio capture
+    stopSystemAudioCapture: (stream, mediaRecorder) => {
+        try {
+            console.log('Stopping system audio capture...');
+            
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            
+            if (stream) {
+                stream.getTracks().forEach(track => {
+                    track.stop();
+                    console.log('Stopped audio track:', track.label);
+                });
+            }
+            
+            console.log('System audio capture stopped');
+        } catch (error) {
+            console.error('Error stopping system audio capture:', error);
         }
     }
 });
