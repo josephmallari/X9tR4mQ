@@ -27,11 +27,22 @@ export const AudioSourceSelector: React.FC<AudioSourceSelectorProps> = ({
     setError(null);
     
     try {
+      console.log('Loading desktop sources...');
       const sources = await window.electronAPI!.getDesktopSources({ types: ['audio'] });
+      console.log('Desktop sources loaded:', sources);
       setDesktopSources(sources);
+      
+      // If no sources found, try alternative method
+      if (sources.length === 0 && window.electronAPI.getWindowsAudioSources) {
+        console.log('No audio sources found, trying Windows alternative...');
+        const altSources = await window.electronAPI.getWindowsAudioSources();
+        console.log('Alternative sources:', altSources);
+        setDesktopSources(altSources);
+      }
     } catch (err) {
       console.error('Failed to load desktop sources:', err);
       setError('Failed to load system audio sources');
+      setDesktopSources([]);
     } finally {
       setLoading(false);
     }
@@ -39,9 +50,20 @@ export const AudioSourceSelector: React.FC<AudioSourceSelectorProps> = ({
 
   useEffect(() => {
     if (isElectron && audioSource.type === 'desktop') {
+      // Add timeout to prevent infinite loading
+      const timeoutId = setTimeout(() => {
+        if (loading) {
+          console.warn('Desktop sources loading timeout');
+          setLoading(false);
+          setError('Loading timeout - system audio may not be available');
+        }
+      }, 10000); // 10 second timeout
+      
       loadDesktopSources();
+      
+      return () => clearTimeout(timeoutId);
     }
-  }, [audioSource.type, isElectron]);
+  }, [audioSource.type, isElectron, loading]);
 
   const handleSourceTypeChange = (type: AudioSourceType) => {
     if (type === 'microphone') {
@@ -109,13 +131,24 @@ export const AudioSourceSelector: React.FC<AudioSourceSelectorProps> = ({
             <div className="error-message">
               <span className="error-icon">⚠️</span>
               {error}
-              <button 
-                className="retry-button"
-                onClick={loadDesktopSources}
-                disabled={loading}
-              >
-                Retry
-              </button>
+              <div className="error-actions">
+                <button 
+                  className="retry-button"
+                  onClick={loadDesktopSources}
+                  disabled={loading}
+                >
+                  Retry
+                </button>
+                <button 
+                  className="fallback-button"
+                  onClick={() => {
+                    console.log('Using fallback: switching to microphone');
+                    onAudioSourceChange({ type: 'microphone' });
+                  }}
+                >
+                  Use Microphone Instead
+                </button>
+              </div>
             </div>
           )}
 
@@ -141,6 +174,21 @@ export const AudioSourceSelector: React.FC<AudioSourceSelectorProps> = ({
             <div className="no-sources-message">
               <span className="info-icon">ℹ️</span>
               No system audio sources found
+              <div className="debug-info">
+                <small>
+                  Debug: isElectron={String(isElectron)}, 
+                  electronAPI={String(!!window.electronAPI)}
+                </small>
+              </div>
+              <button 
+                className="fallback-button"
+                onClick={() => {
+                  console.log('No sources found, switching to microphone');
+                  onAudioSourceChange({ type: 'microphone' });
+                }}
+              >
+                Use Microphone Instead
+              </button>
             </div>
           )}
         </div>
