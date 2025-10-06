@@ -75,11 +75,42 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       console.log('Starting system audio capture...');
       setState(prev => ({ ...prev, error: null, isCapturing: false }));
 
-      const stream = await window.electronAPI.startSystemAudioCapture();
+      // Get system audio stream directly in renderer to avoid serialization issues
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        throw new Error('getDisplayMedia not available in this context');
+      }
+
+      console.log('Requesting system audio stream for capture...');
+      
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          sampleRate: 44100,
+          channelCount: 2,
+        },
+        video: false
+      });
+      
+      console.log('System audio stream obtained for capture');
+      console.log('Audio tracks:', stream.getAudioTracks().length);
+      
+      // Log audio track details
+      stream.getAudioTracks().forEach((track, index) => {
+        console.log(`Audio track ${index}:`, {
+          label: track.label,
+          enabled: track.enabled,
+          muted: track.muted,
+          readyState: track.readyState,
+          settings: track.getSettings(),
+          constraints: track.getConstraints()
+        });
+      });
       
       streamRef.current = stream;
       
-      // Create MediaRecorder in the renderer process to avoid serialization issues
+      // Create MediaRecorder in the renderer process
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus',
         audioBitsPerSecond: 128000

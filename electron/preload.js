@@ -116,54 +116,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
         }
     },
 
-    // Start system audio capture - returns only the stream, MediaRecorder created in renderer
-    startSystemAudioCapture: async () => {
-        try {
-            console.log('Starting system audio capture...');
-            
-            // Get system audio stream directly
-            if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-                throw new Error('getDisplayMedia not available in this context');
-            }
-            
-            console.log('Requesting system audio stream for capture...');
-            
-            const stream = await navigator.mediaDevices.getDisplayMedia({
-                audio: {
-                    echoCancellation: false,
-                    noiseSuppression: false,
-                    autoGainControl: false,
-                    sampleRate: 44100,
-                    channelCount: 2,
-                },
-                video: false
-            });
-            
-            console.log('System audio stream obtained for capture');
-            console.log('Audio tracks:', stream.getAudioTracks().length);
-            
-            // Log audio track details
-            stream.getAudioTracks().forEach((track, index) => {
-                console.log(`Audio track ${index}:`, {
-                    label: track.label,
-                    enabled: track.enabled,
-                    muted: track.muted,
-                    readyState: track.readyState,
-                    settings: track.getSettings(),
-                    constraints: track.getConstraints()
-                });
-            });
-            
-            // Return only the stream - MediaRecorder will be created in the renderer process
-            console.log('Returning stream for MediaRecorder creation in renderer');
-            
-            return stream;
-        } catch (error) {
-            console.error('Failed to start system audio capture:', error);
-            throw error;
-        }
-    },
-
     // Stop system audio capture
     stopSystemAudioCapture: (stream, mediaRecorder) => {
         try {
