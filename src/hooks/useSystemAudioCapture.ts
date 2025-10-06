@@ -7,6 +7,12 @@ interface SystemAudioCaptureState {
   error: string | null;
   audioChunks: Blob[];
   recordingBlob: Blob | null;
+  
+  // Playback state
+  isPlaying: boolean;
+  playbackPosition: number;
+  playbackDuration: number;
+  audioUrl: string | null;
 }
 
 interface SystemAudioCaptureResult {
@@ -18,6 +24,12 @@ interface SystemAudioCaptureResult {
   audioChunks: Blob[];
   recordingBlob: Blob | null;
   
+  // Playback state
+  isPlaying: boolean;
+  playbackPosition: number;
+  playbackDuration: number;
+  audioUrl: string | null;
+  
   // Functions
   startCapture: () => Promise<void>;
   stopCapture: () => void;
@@ -25,6 +37,19 @@ interface SystemAudioCaptureResult {
   resumeCapture: () => void;
   resetCapture: () => void;
   downloadRecording: () => void;
+  
+  // Playback functions
+  playRecording: () => void;
+  pausePlayback: () => void;
+  stopPlayback: () => void;
+  seekTo: (time: number) => void;
+  
+  // Audio element and handlers
+  audioElementRef: React.RefObject<HTMLAudioElement | null>;
+  handleAudioLoad: () => void;
+  handleAudioTimeUpdate: () => void;
+  handleAudioEnded: () => void;
+  handleAudioError: (error: Event) => void;
 }
 
 export function useSystemAudioCapture(): SystemAudioCaptureResult {
@@ -34,13 +59,20 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
     duration: 0,
     error: null,
     audioChunks: [],
-    recordingBlob: null
+    recordingBlob: null,
+    
+    // Playback state
+    isPlaying: false,
+    playbackPosition: 0,
+    playbackDuration: 0,
+    audioUrl: null
   });
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const startTimeRef = useRef<number>(0);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
 
   const updateDuration = useCallback(() => {
     if (state.isCapturing && !state.isPaused) {
@@ -110,9 +142,26 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       
       streamRef.current = stream;
       
-      // Create MediaRecorder in the renderer process
+      // Create MediaRecorder with Windows-compatible format
+      let mimeType = 'audio/webm;codecs=opus';
+      let fileExtension = 'webm';
+      
+      // Try different formats for better Windows compatibility
+      if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        mimeType = 'audio/mp4';
+        fileExtension = 'mp4';
+      } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mimeType = 'audio/webm;codecs=opus';
+        fileExtension = 'webm';
+      } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+        mimeType = 'audio/ogg;codecs=opus';
+        fileExtension = 'ogg';
+      }
+      
+      console.log('Using audio format:', mimeType, 'File extension:', fileExtension);
+      
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus',
+        mimeType: mimeType,
         audioBitsPerSecond: 128000
       });
       
@@ -150,18 +199,25 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
         console.log('System audio recording stopped');
         stopDurationTimer();
         
+        // Create audio blob with detected format
         const audioBlob = new Blob(state.audioChunks, { 
-          type: 'audio/webm;codecs=opus' 
+          type: mimeType
         });
+        
+        // Create audio URL for playback
+        const audioUrl = URL.createObjectURL(audioBlob);
         
         setState(prev => ({
           ...prev,
           isCapturing: false,
           isPaused: false,
-          recordingBlob: audioBlob
+          recordingBlob: audioBlob,
+          audioUrl: audioUrl,
+          playbackDuration: prev.duration
         }));
         
         console.log('System audio recording blob created:', audioBlob.size, 'bytes');
+        console.log('Audio URL created for playback:', audioUrl);
       };
 
       mediaRecorder.onerror = (event) => {
@@ -244,7 +300,11 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       duration: 0,
       error: null,
       audioChunks: [],
-      recordingBlob: null
+      recordingBlob: null,
+      isPlaying: false,
+      playbackPosition: 0,
+      playbackDuration: 0,
+      audioUrl: null
     });
     startTimeRef.current = 0;
   }, [stopCapture]);
@@ -254,14 +314,89 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       const url = URL.createObjectURL(state.recordingBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `system-audio-${new Date().toISOString().replace(/[:.]/g, '-')}.webm`;
+      
+      // Determine file extension based on blob type
+      let extension = 'webm';
+      if (state.recordingBlob.type.includes('mp4')) {
+        extension = 'mp4';
+      } else if (state.recordingBlob.type.includes('ogg')) {
+        extension = 'ogg';
+      }
+      
+      a.download = `system-audio-${new Date().toISOString().replace(/[:.]/g, '-')}.${extension}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      console.log('System audio recording downloaded');
+      console.log(`System audio recording downloaded as .${extension}`);
     }
   }, [state.recordingBlob]);
+
+  // Playback functions
+  const playRecording = useCallback(() => {
+    if (state.audioUrl && audioElementRef.current) {
+      audioElementRef.current.play();
+      setState(prev => ({ ...prev, isPlaying: true }));
+    }
+  }, [state.audioUrl]);
+
+  const pausePlayback = useCallback(() => {
+    if (audioElementRef.current) {
+      audioElementRef.current.pause();
+      setState(prev => ({ ...prev, isPlaying: false }));
+    }
+  }, []);
+
+  const stopPlayback = useCallback(() => {
+    if (audioElementRef.current) {
+      audioElementRef.current.pause();
+      audioElementRef.current.currentTime = 0;
+      setState(prev => ({ 
+        ...prev, 
+        isPlaying: false, 
+        playbackPosition: 0 
+      }));
+    }
+  }, []);
+
+  const seekTo = useCallback((time: number) => {
+    if (audioElementRef.current) {
+      audioElementRef.current.currentTime = time;
+      setState(prev => ({ ...prev, playbackPosition: time }));
+    }
+  }, []);
+
+  // Audio event handlers
+  const handleAudioLoad = useCallback(() => {
+    if (audioElementRef.current) {
+      setState(prev => ({ 
+        ...prev, 
+        playbackDuration: audioElementRef.current!.duration * 1000 
+      }));
+    }
+  }, []);
+
+  const handleAudioTimeUpdate = useCallback(() => {
+    if (audioElementRef.current) {
+      setState(prev => ({ 
+        ...prev, 
+        playbackPosition: audioElementRef.current!.currentTime * 1000 
+      }));
+    }
+  }, []);
+
+  const handleAudioEnded = useCallback(() => {
+    setState(prev => ({ 
+      ...prev, 
+      isPlaying: false, 
+      playbackPosition: 0 
+    }));
+  }, []);
+
+  const handleAudioError = useCallback((error: Event) => {
+    console.error('Audio playback error:', error);
+    setState(prev => ({ ...prev, error: 'Audio playback error' }));
+  }, []);
 
   return {
     ...state,
@@ -270,6 +405,15 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
     pauseCapture,
     resumeCapture,
     resetCapture,
-    downloadRecording
+    downloadRecording,
+    playRecording,
+    pausePlayback,
+    stopPlayback,
+    seekTo,
+    audioElementRef,
+    handleAudioLoad,
+    handleAudioTimeUpdate,
+    handleAudioEnded,
+    handleAudioError
   };
 }
