@@ -4,4 +4,6 @@ import { contextBridge, ipcRenderer } from 'electron';
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
     getDesktopSources: (options) => ipcRenderer.invoke('get-desktop-sources', options),
+    getWindowsAudioSources: () => ipcRenderer.invoke('get-windows-audio-sources'),
+    getPlatform: () => process.platform
 });
