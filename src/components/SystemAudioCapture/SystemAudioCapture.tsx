@@ -10,29 +10,13 @@ export const SystemAudioCapture: React.FC = () => {
     error,
     audioChunks,
     recordingBlob,
+    recordingFormat,
     startCapture,
     stopCapture,
     pauseCapture,
     resumeCapture,
     resetCapture,
-    downloadRecording,
-    
-    // Playback state
-    isPlaying,
-    playbackPosition,
-    playbackDuration,
-    audioUrl,
-    
-    // Playback functions
-    playRecording,
-    pausePlayback,
-    stopPlayback,
-    seekTo,
-    audioElementRef,
-    handleAudioLoad,
-    handleAudioTimeUpdate,
-    handleAudioEnded,
-    handleAudioError
+    downloadRecording
   } = useSystemAudioCapture();
 
   const formatDuration = (ms: number): string => {
@@ -92,6 +76,9 @@ export const SystemAudioCapture: React.FC = () => {
           <div className="info-item">
             <strong>Chunks:</strong> {audioChunks.length}
           </div>
+          <div className="info-item">
+            <strong>Format:</strong> {recordingFormat.toUpperCase()}
+          </div>
           {recordingBlob && (
             <div className="info-item">
               <strong>Size:</strong> {formatFileSize(recordingBlob.size)}
@@ -129,60 +116,19 @@ export const SystemAudioCapture: React.FC = () => {
 
         {(recordingBlob || audioChunks.length > 0) && (
           <div className="post-capture-controls">
-            {/* Playback Controls */}
-            <div className="playback-controls">
-              <h4>Playback</h4>
-              <div className="playback-buttons">
-                <button 
-                  className="control-button play-button"
-                  onClick={isPlaying ? pausePlayback : playRecording}
-                  disabled={!audioUrl}
-                >
-                  {isPlaying ? '⏸️ Pause' : '▶️ Play'}
-                </button>
-                <button 
-                  className="control-button stop-playback-button"
-                  onClick={stopPlayback}
-                  disabled={!audioUrl}
-                >
-                  ⏹️ Stop
-                </button>
-              </div>
-              
-              {/* Progress Bar */}
-              {audioUrl && playbackDuration > 0 && (
-                <div className="playback-progress">
-                  <div className="progress-info">
-                    <span>{formatDuration(playbackPosition)} / {formatDuration(playbackDuration)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max={playbackDuration}
-                    value={playbackPosition}
-                    onChange={(e) => seekTo(Number(e.target.value))}
-                    className="progress-slider"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Download and Reset */}
-            <div className="file-controls">
-              <button 
-                className="control-button download-button"
-                onClick={downloadRecording}
-                disabled={!recordingBlob}
-              >
-                💾 Download Recording
-              </button>
-              <button 
-                className="control-button reset-button"
-                onClick={resetCapture}
-              >
-                🔄 Reset
-              </button>
-            </div>
+            <button 
+              className="control-button download-button"
+              onClick={downloadRecording}
+              disabled={!recordingBlob}
+            >
+              💾 Download Recording ({recordingFormat.toUpperCase()})
+            </button>
+            <button 
+              className="control-button reset-button"
+              onClick={resetCapture}
+            >
+              🔄 Reset
+            </button>
           </div>
         )}
       </div>
@@ -202,25 +148,11 @@ export const SystemAudioCapture: React.FC = () => {
           <li>You'll be prompted to select audio sources (screens, applications)</li>
           <li>Use Pause/Resume to control recording without stopping</li>
           <li>Click "Stop Capture" when finished recording</li>
-          <li><strong>Playback:</strong> Use the playback controls to hear your recording</li>
-          <li>Seek through the audio using the progress slider</li>
           <li>Download the recording in Windows-compatible format (MP4/WebM/OGG)</li>
+          <li>The format is automatically selected for best Windows compatibility</li>
           <li><strong>Note:</strong> Best results on Windows with full system audio support</li>
         </ul>
       </div>
-
-      {/* Hidden audio element for playback */}
-      {audioUrl && (
-        <audio
-          ref={audioElementRef}
-          src={audioUrl}
-          onLoadedMetadata={handleAudioLoad}
-          onTimeUpdate={handleAudioTimeUpdate}
-          onEnded={handleAudioEnded}
-          onError={handleAudioError}
-          style={{ display: 'none' }}
-        />
-      )}
     </div>
   );
 };

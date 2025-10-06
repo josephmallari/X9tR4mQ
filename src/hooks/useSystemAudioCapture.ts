@@ -7,12 +7,7 @@ interface SystemAudioCaptureState {
   error: string | null;
   audioChunks: Blob[];
   recordingBlob: Blob | null;
-  
-  // Playback state
-  isPlaying: boolean;
-  playbackPosition: number;
-  playbackDuration: number;
-  audioUrl: string | null;
+  recordingFormat: string;
 }
 
 interface SystemAudioCaptureResult {
@@ -23,12 +18,7 @@ interface SystemAudioCaptureResult {
   error: string | null;
   audioChunks: Blob[];
   recordingBlob: Blob | null;
-  
-  // Playback state
-  isPlaying: boolean;
-  playbackPosition: number;
-  playbackDuration: number;
-  audioUrl: string | null;
+  recordingFormat: string;
   
   // Functions
   startCapture: () => Promise<void>;
@@ -37,19 +27,6 @@ interface SystemAudioCaptureResult {
   resumeCapture: () => void;
   resetCapture: () => void;
   downloadRecording: () => void;
-  
-  // Playback functions
-  playRecording: () => void;
-  pausePlayback: () => void;
-  stopPlayback: () => void;
-  seekTo: (time: number) => void;
-  
-  // Audio element and handlers
-  audioElementRef: React.RefObject<HTMLAudioElement | null>;
-  handleAudioLoad: () => void;
-  handleAudioTimeUpdate: () => void;
-  handleAudioEnded: () => void;
-  handleAudioError: (error: Event) => void;
 }
 
 export function useSystemAudioCapture(): SystemAudioCaptureResult {
@@ -60,19 +37,13 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
     error: null,
     audioChunks: [],
     recordingBlob: null,
-    
-    // Playback state
-    isPlaying: false,
-    playbackPosition: 0,
-    playbackDuration: 0,
-    audioUrl: null
+    recordingFormat: 'webm'
   });
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const startTimeRef = useRef<number>(0);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const audioElementRef = useRef<HTMLAudioElement | null>(null);
 
   const updateDuration = useCallback(() => {
     if (state.isCapturing && !state.isPaused) {
@@ -160,6 +131,9 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       
       console.log('Using audio format:', mimeType, 'File extension:', fileExtension);
       
+      // Store format information
+      setState(prev => ({ ...prev, recordingFormat: fileExtension }));
+      
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: mimeType,
         audioBitsPerSecond: 128000
@@ -204,20 +178,15 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
           type: mimeType
         });
         
-        // Create audio URL for playback
-        const audioUrl = URL.createObjectURL(audioBlob);
-        
         setState(prev => ({
           ...prev,
           isCapturing: false,
           isPaused: false,
-          recordingBlob: audioBlob,
-          audioUrl: audioUrl,
-          playbackDuration: prev.duration
+          recordingBlob: audioBlob
         }));
         
         console.log('System audio recording blob created:', audioBlob.size, 'bytes');
-        console.log('Audio URL created for playback:', audioUrl);
+        console.log('Recording format:', fileExtension);
       };
 
       mediaRecorder.onerror = (event) => {
@@ -301,10 +270,7 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       error: null,
       audioChunks: [],
       recordingBlob: null,
-      isPlaying: false,
-      playbackPosition: 0,
-      playbackDuration: 0,
-      audioUrl: null
+      recordingFormat: 'webm'
     });
     startTimeRef.current = 0;
   }, [stopCapture]);
@@ -315,13 +281,8 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       const a = document.createElement('a');
       a.href = url;
       
-      // Determine file extension based on blob type
-      let extension = 'webm';
-      if (state.recordingBlob.type.includes('mp4')) {
-        extension = 'mp4';
-      } else if (state.recordingBlob.type.includes('ogg')) {
-        extension = 'ogg';
-      }
+      // Use the stored recording format for file extension
+      const extension = state.recordingFormat;
       
       a.download = `system-audio-${new Date().toISOString().replace(/[:.]/g, '-')}.${extension}`;
       document.body.appendChild(a);
@@ -330,73 +291,7 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       URL.revokeObjectURL(url);
       console.log(`System audio recording downloaded as .${extension}`);
     }
-  }, [state.recordingBlob]);
-
-  // Playback functions
-  const playRecording = useCallback(() => {
-    if (state.audioUrl && audioElementRef.current) {
-      audioElementRef.current.play();
-      setState(prev => ({ ...prev, isPlaying: true }));
-    }
-  }, [state.audioUrl]);
-
-  const pausePlayback = useCallback(() => {
-    if (audioElementRef.current) {
-      audioElementRef.current.pause();
-      setState(prev => ({ ...prev, isPlaying: false }));
-    }
-  }, []);
-
-  const stopPlayback = useCallback(() => {
-    if (audioElementRef.current) {
-      audioElementRef.current.pause();
-      audioElementRef.current.currentTime = 0;
-      setState(prev => ({ 
-        ...prev, 
-        isPlaying: false, 
-        playbackPosition: 0 
-      }));
-    }
-  }, []);
-
-  const seekTo = useCallback((time: number) => {
-    if (audioElementRef.current) {
-      audioElementRef.current.currentTime = time;
-      setState(prev => ({ ...prev, playbackPosition: time }));
-    }
-  }, []);
-
-  // Audio event handlers
-  const handleAudioLoad = useCallback(() => {
-    if (audioElementRef.current) {
-      setState(prev => ({ 
-        ...prev, 
-        playbackDuration: audioElementRef.current!.duration * 1000 
-      }));
-    }
-  }, []);
-
-  const handleAudioTimeUpdate = useCallback(() => {
-    if (audioElementRef.current) {
-      setState(prev => ({ 
-        ...prev, 
-        playbackPosition: audioElementRef.current!.currentTime * 1000 
-      }));
-    }
-  }, []);
-
-  const handleAudioEnded = useCallback(() => {
-    setState(prev => ({ 
-      ...prev, 
-      isPlaying: false, 
-      playbackPosition: 0 
-    }));
-  }, []);
-
-  const handleAudioError = useCallback((error: Event) => {
-    console.error('Audio playback error:', error);
-    setState(prev => ({ ...prev, error: 'Audio playback error' }));
-  }, []);
+  }, [state.recordingBlob, state.recordingFormat]);
 
   return {
     ...state,
@@ -405,15 +300,6 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
     pauseCapture,
     resumeCapture,
     resetCapture,
-    downloadRecording,
-    playRecording,
-    pausePlayback,
-    stopPlayback,
-    seekTo,
-    audioElementRef,
-    handleAudioLoad,
-    handleAudioTimeUpdate,
-    handleAudioEnded,
-    handleAudioError
+    downloadRecording
   };
 }
