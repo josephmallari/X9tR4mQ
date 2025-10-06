@@ -1,10 +1,9 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, desktopCapturer, session } from 'electron';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
 
 let win;
 
@@ -17,6 +16,27 @@ async function createWindow() {
             preload: join(__dirname, 'preload.mjs')
         }
     })
+
+    // Set up display media request handler for system audio capture
+    session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+        console.log('Display media request received:', request);
+        
+        desktopCapturer.getSources({ types: ['screen'] }).then((sources) => {
+            console.log('Available sources:', sources);
+            
+            // Grant access to the first screen found for system audio
+            if (sources.length > 0) {
+                console.log('System audio source detected:', sources[0]);
+                callback({ video: sources[0], audio: 'loopback' });
+            } else {
+                console.log('No system audio sources found');
+                callback({ video: null, audio: null });
+            }
+        }).catch((error) => {
+            console.error('Error getting desktop sources:', error);
+            callback({ video: null, audio: null });
+        });
+    }, { useSystemPicker: true });
 
     if (!app.isPackaged) {
         const url = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';

@@ -5,6 +5,7 @@ import WaveformVisualizer from "./components/WaveformVisualizer/WaveformVisualiz
 import type { WaveformVisualizerRef } from "./components/WaveformVisualizer/WaveformVisualizer";
 import LiveTranscriptionDisplay from "./components/LiveTranscriptionDisplay/LiveTranscriptionDisplay";
 import TranscriptionDisplay from "./components/TranscriptionDisplay/TranscriptionDisplay";
+import { SystemAudioDetection } from "./components/SystemAudioDetection/SystemAudioDetection";
 import { useAudioRecorder } from "./hooks/useAudioRecorder";
 import "./App.css";
 
@@ -63,6 +64,8 @@ function App() {
   return (
     <>
       <h1>React Audio Recorder</h1>
+
+      <SystemAudioDetection />
 
       <WaveformVisualizer ref={waveformRef} />
 
