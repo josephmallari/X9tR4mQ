@@ -16,7 +16,7 @@ async function createWindow() {
             contextIsolation: true,
             nodeIntegration: false,
             enableRemoteModule: false,
-            preload: join(__dirname, 'preload.mjs'),
+            preload: join(__dirname, 'preload.js'),
             // Windows-specific audio permissions
             webSecurity: false, // Temporarily disable for testing
             allowRunningInsecureContent: true
