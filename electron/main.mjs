@@ -17,25 +17,50 @@ async function createWindow() {
         }
     })
 
-    // Set up display media request handler for system audio capture
+    // Set up display media request handler for system audio capture (Windows optimized)
     session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
         console.log('Display media request received:', request);
+        console.log('Platform:', process.platform);
         
-        desktopCapturer.getSources({ types: ['screen'] }).then((sources) => {
-            console.log('Available sources:', sources);
+        // Check if we're on Windows for better system audio support
+        if (process.platform === 'win32') {
+            console.log('Windows detected - enabling system audio capture');
             
-            // Grant access to the first screen found for system audio
-            if (sources.length > 0) {
-                console.log('System audio source detected:', sources[0]);
-                callback({ video: sources[0], audio: 'loopback' });
-            } else {
-                console.log('No system audio sources found');
+            desktopCapturer.getSources({ 
+                types: ['screen'],
+                thumbnailSize: { width: 0, height: 0 }, // Skip thumbnails for better performance
+                fetchWindowIcons: false // Skip icons for better performance
+            }).then((sources) => {
+                console.log('Available Windows sources:', sources.length);
+                
+                // Grant access to the first screen found for system audio
+                if (sources.length > 0) {
+                    console.log('Windows system audio source detected:', sources[0].name);
+                    callback({ video: sources[0], audio: 'loopback' });
+                } else {
+                    console.log('No Windows system audio sources found');
+                    callback({ video: null, audio: null });
+                }
+            }).catch((error) => {
+                console.error('Error getting Windows desktop sources:', error);
                 callback({ video: null, audio: null });
-            }
-        }).catch((error) => {
-            console.error('Error getting desktop sources:', error);
-            callback({ video: null, audio: null });
-        });
+            });
+        } else {
+            console.log('Non-Windows platform detected - limited system audio support');
+            // For non-Windows platforms, still try but with lower expectations
+            desktopCapturer.getSources({ types: ['screen'] }).then((sources) => {
+                if (sources.length > 0) {
+                    console.log('Non-Windows source found (limited audio support):', sources[0].name);
+                    callback({ video: sources[0], audio: 'loopback' });
+                } else {
+                    console.log('No sources found on non-Windows platform');
+                    callback({ video: null, audio: null });
+                }
+            }).catch((error) => {
+                console.error('Error on non-Windows platform:', error);
+                callback({ video: null, audio: null });
+            });
+        }
     }, { useSystemPicker: true });
 
     if (!app.isPackaged) {

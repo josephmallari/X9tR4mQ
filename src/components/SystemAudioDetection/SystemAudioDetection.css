@@ -13,6 +13,26 @@
   font-size: 1.2em;
 }
 
+.platform-info {
+  margin-bottom: 15px;
+  padding: 10px;
+  background-color: #e3f2fd;
+  border-radius: 4px;
+  border-left: 4px solid #2196f3;
+}
+
+.windows-badge {
+  color: #2e7d32;
+  font-weight: bold;
+  margin-left: 8px;
+}
+
+.limited-badge {
+  color: #f57c00;
+  font-weight: bold;
+  margin-left: 8px;
+}
+
 .status-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -49,6 +69,17 @@
 .detect-button:disabled {
   background-color: #6c757d;
   cursor: not-allowed;
+}
+
+.platform-warning {
+  color: #856404;
+  font-size: 14px;
+  margin: 10px 0;
+  padding: 10px;
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  border-left: 4px solid #ffc107;
 }
 
 .error-message {

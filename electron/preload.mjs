@@ -2,34 +2,32 @@ import { contextBridge } from 'electron';
 
 // Expose system audio detection capabilities to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
-    // Check if system audio capture is available
+    // Get platform information
+    getPlatform: () => {
+        return process.platform;
+    },
+
+    // Check if system audio capture is available (Windows optimized)
     isSystemAudioAvailable: async () => {
         try {
-            // Test if getDisplayMedia is available
-            if (typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
-                console.log('getDisplayMedia not available');
-                return false;
+            const platform = process.platform;
+            console.log('Checking system audio availability on platform:', platform);
+            
+            // Test if getDisplayMedia is available in the renderer context
+            if (typeof navigator !== 'undefined' && 
+                navigator.mediaDevices && 
+                typeof navigator.mediaDevices.getDisplayMedia === 'function') {
+                
+                if (platform === 'win32') {
+                    console.log('Windows platform - system audio should be available');
+                    return true;
+                } else {
+                    console.log('Non-Windows platform - system audio may have limitations');
+                    return true; // Still return true but with caveats
+                }
             }
-            
-            // Try to get system audio stream to test availability
-            const stream = await navigator.mediaDevices.getDisplayMedia({
-                audio: {
-                    echoCancellation: false,
-                    noiseSuppression: false,
-                    autoGainControl: false,
-                    sampleRate: 44100,
-                    channelCount: 2,
-                },
-                video: false
-            });
-            
-            console.log('System audio stream obtained:', stream);
-            console.log('Audio tracks:', stream.getAudioTracks());
-            
-            // Stop the test stream immediately
-            stream.getTracks().forEach(track => track.stop());
-            
-            return stream.getAudioTracks().length > 0;
+            console.log('getDisplayMedia not available');
+            return false;
         } catch (error) {
             console.error('System audio not available:', error);
             return false;
@@ -40,6 +38,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     detectSystemAudio: async () => {
         try {
             console.log('Attempting to detect system audio...');
+            
+            if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+                throw new Error('getDisplayMedia not available in this context');
+            }
             
             // Request display media to trigger the handler
             const stream = await navigator.mediaDevices.getDisplayMedia({
@@ -75,6 +77,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Get system audio stream (for actual capture)
     getSystemAudioStream: async () => {
         try {
+            if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+                throw new Error('getDisplayMedia not available in this context');
+            }
+            
             const stream = await navigator.mediaDevices.getDisplayMedia({
                 audio: {
                     echoCancellation: false,

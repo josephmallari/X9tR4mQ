@@ -4,10 +4,12 @@ import './SystemAudioDetection.css';
 
 export const SystemAudioDetection: React.FC = () => {
   const {
+    platform,
     isAvailable,
     isDetected,
     isDetecting,
     error,
+    isWindows,
     checkAvailability,
     detectSystemAudio
   } = useSystemAudioDetection();
@@ -25,6 +27,13 @@ export const SystemAudioDetection: React.FC = () => {
     <div className="system-audio-detection">
       <h3>System Audio Detection</h3>
       
+      {/* Platform Information */}
+      <div className="platform-info">
+        <strong>Platform:</strong> {platform}
+        {isWindows && <span className="windows-badge"> 🪟 Windows (Full Support)</span>}
+        {!isWindows && <span className="limited-badge"> ⚠️ Limited Support</span>}
+      </div>
+      
       <div className="status-grid">
         <div className="status-item">
           <strong>Available:</strong> {isAvailable ? '✅ Yes' : '❌ No'}
@@ -36,6 +45,13 @@ export const SystemAudioDetection: React.FC = () => {
           <strong>Detecting:</strong> {isDetecting ? '🔄 Yes' : '⏸️ No'}
         </div>
       </div>
+
+      {!isWindows && (
+        <div className="platform-warning">
+          <strong>Note:</strong> System audio capture has limitations on {platform}. 
+          For best results, test on Windows where full system audio capture is supported.
+        </div>
+      )}
 
       <button 
         className="detect-button"

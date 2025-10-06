@@ -1,18 +1,22 @@
 import { useState, useCallback } from 'react';
 
 interface SystemAudioDetectionResult {
+  platform: string;
   isAvailable: boolean;
   isDetected: boolean;
   isDetecting: boolean;
   error: string | null;
+  isWindows: boolean;
 }
 
 export function useSystemAudioDetection() {
   const [result, setResult] = useState<SystemAudioDetectionResult>({
+    platform: 'unknown',
     isAvailable: false,
     isDetected: false,
     isDetecting: false,
-    error: null
+    error: null,
+    isWindows: false
   });
 
   const checkAvailability = useCallback(async () => {
@@ -22,9 +26,20 @@ export function useSystemAudioDetection() {
     }
 
     try {
+      // Get platform information first
+      const platform = window.electronAPI.getPlatform();
+      const isWindows = platform === 'win32';
+      
       const available = await window.electronAPI.isSystemAudioAvailable();
-      setResult(prev => ({ ...prev, isAvailable: available, error: null }));
-      console.log('System audio available:', available);
+      setResult(prev => ({ 
+        ...prev, 
+        platform,
+        isWindows,
+        isAvailable: available, 
+        error: null 
+      }));
+      
+      console.log('Platform:', platform, 'Windows:', isWindows, 'System audio available:', available);
       return available;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
