@@ -148,9 +148,9 @@ export const SystemAudioCapture: React.FC = () => {
           <li>You'll be prompted to select audio sources (screens, applications)</li>
           <li>Use Pause/Resume to control recording without stopping</li>
           <li>Click "Stop Capture" when finished recording</li>
-          <li>Download the recording in Windows Media Player compatible format</li>
-          <li>Formats prioritized: WAV (best), MP4 (good), WebM/OGG (limited Windows support)</li>
-          <li><strong>Windows Media Player:</strong> WAV and MP4 formats work best</li>
+          <li>Download the recording in WebM format (widely supported)</li>
+          <li><strong>Media Players:</strong> WebM works in VLC, Chrome, Firefox, and modern players</li>
+          <li><strong>Windows Media Player:</strong> May require VLC or other modern media players</li>
           <li><strong>Note:</strong> Best results on Windows with full system audio support</li>
         </ul>
       </div>

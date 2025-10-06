@@ -37,7 +37,7 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
     error: null,
     audioChunks: [],
     recordingBlob: null,
-    recordingFormat: 'wav'
+    recordingFormat: 'webm'
   });
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -46,13 +46,16 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const updateDuration = useCallback(() => {
-    if (state.isCapturing && !state.isPaused) {
-      setState(prev => ({
-        ...prev,
-        duration: Date.now() - startTimeRef.current
-      }));
-    }
-  }, [state.isCapturing, state.isPaused]);
+    setState(prev => {
+      if (prev.isCapturing && !prev.isPaused) {
+        return {
+          ...prev,
+          duration: Date.now() - startTimeRef.current
+        };
+      }
+      return prev;
+    });
+  }, []);
 
   const startDurationTimer = useCallback(() => {
     if (durationIntervalRef.current) {
@@ -130,32 +133,32 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       
       streamRef.current = stream;
       
-      // Create MediaRecorder with Windows Media Player compatible format
-      let mimeType = 'audio/wav';
-      let fileExtension = 'wav';
+      // Create MediaRecorder with reliable format (WebM is most widely supported)
+      let mimeType = 'audio/webm;codecs=opus';
+      let fileExtension = 'webm';
       
-      // Try different formats in order of Windows Media Player compatibility
-      if (MediaRecorder.isTypeSupported('audio/wav')) {
-        mimeType = 'audio/wav';
-        fileExtension = 'wav';
-        console.log('Using WAV format (best Windows Media Player support)');
+      // Try different formats, prioritizing reliability over Windows Media Player
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mimeType = 'audio/webm;codecs=opus';
+        fileExtension = 'webm';
+        console.log('Using WebM Opus format (reliable cross-platform support)');
+      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+        mimeType = 'audio/webm';
+        fileExtension = 'webm';
+        console.log('Using basic WebM format');
       } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
         mimeType = 'audio/mp4';
         fileExtension = 'mp4';
-        console.log('Using MP4 format (good Windows support)');
-      } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-        mimeType = 'audio/webm;codecs=opus';
-        fileExtension = 'webm';
-        console.log('Using WebM format (limited Windows support)');
+        console.log('Using MP4 format');
       } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
         mimeType = 'audio/ogg;codecs=opus';
         fileExtension = 'ogg';
-        console.log('Using OGG format (limited Windows support)');
+        console.log('Using OGG Opus format');
       } else {
-        // Fallback to default
+        // Fallback to basic webm
         mimeType = 'audio/webm';
         fileExtension = 'webm';
-        console.log('Using default WebM format');
+        console.log('Using fallback WebM format');
       }
       
       console.log('Final format selection:', mimeType, 'File extension:', fileExtension);
@@ -163,19 +166,13 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       // Store format information
       setState(prev => ({ ...prev, recordingFormat: fileExtension }));
       
+      // Create MediaRecorder with optimized settings
       const mediaRecorderOptions: MediaRecorderOptions = {
-        mimeType: mimeType
+        mimeType: mimeType,
+        audioBitsPerSecond: 128000
       };
       
-      // Set audio quality based on format
-      if (mimeType === 'audio/wav') {
-        // WAV doesn't support audioBitsPerSecond, use default quality
-        console.log('WAV format selected - using default quality');
-      } else {
-        // For compressed formats, use moderate quality for better compatibility
-        mediaRecorderOptions.audioBitsPerSecond = 128000;
-        console.log('Compressed format - using 128kbps bitrate');
-      }
+      console.log('MediaRecorder options:', mediaRecorderOptions);
       
       const mediaRecorder = new MediaRecorder(stream, mediaRecorderOptions);
       
@@ -310,7 +307,7 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       error: null,
       audioChunks: [],
       recordingBlob: null,
-      recordingFormat: 'wav'
+      recordingFormat: 'webm'
     });
     startTimeRef.current = 0;
   }, [stopCapture]);
