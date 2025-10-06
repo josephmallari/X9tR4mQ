@@ -33,7 +33,7 @@ export const AudioSourceSelector: React.FC<AudioSourceSelectorProps> = ({
       setDesktopSources(sources);
       
       // If no sources found, try alternative method
-      if (sources.length === 0 && window.electronAPI.getWindowsAudioSources) {
+      if (sources.length === 0 && window.electronAPI?.getWindowsAudioSources) {
         console.log('No audio sources found, trying Windows alternative...');
         const altSources = await window.electronAPI.getWindowsAudioSources();
         console.log('Alternative sources:', altSources);

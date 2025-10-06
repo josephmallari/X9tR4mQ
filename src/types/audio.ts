@@ -48,6 +48,8 @@ declare global {
   interface Window {
     electronAPI?: {
       getDesktopSources: (options?: { types: string[] }) => Promise<DesktopSource[]>;
+      getWindowsAudioSources?: () => Promise<DesktopSource[]>;
+      getPlatform?: () => string;
     };
   }
 }
