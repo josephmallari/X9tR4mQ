@@ -37,7 +37,7 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
     error: null,
     audioChunks: [],
     recordingBlob: null,
-    recordingFormat: 'webm'
+    recordingFormat: 'wav'
   });
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -111,33 +111,73 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
         });
       });
       
+      // Log all supported MediaRecorder formats
+      console.log('Checking MediaRecorder format support:');
+      const formatsToCheck = [
+        'audio/wav',
+        'audio/mp4',
+        'audio/mpeg',
+        'audio/webm;codecs=opus',
+        'audio/webm;codecs=vp8',
+        'audio/ogg;codecs=opus',
+        'audio/ogg;codecs=vorbis'
+      ];
+      
+      formatsToCheck.forEach(format => {
+        const isSupported = MediaRecorder.isTypeSupported(format);
+        console.log(`${format}: ${isSupported ? '✅ Supported' : '❌ Not supported'}`);
+      });
+      
       streamRef.current = stream;
       
-      // Create MediaRecorder with Windows-compatible format
-      let mimeType = 'audio/webm;codecs=opus';
-      let fileExtension = 'webm';
+      // Create MediaRecorder with Windows Media Player compatible format
+      let mimeType = 'audio/wav';
+      let fileExtension = 'wav';
       
-      // Try different formats for better Windows compatibility
-      if (MediaRecorder.isTypeSupported('audio/mp4')) {
+      // Try different formats in order of Windows Media Player compatibility
+      if (MediaRecorder.isTypeSupported('audio/wav')) {
+        mimeType = 'audio/wav';
+        fileExtension = 'wav';
+        console.log('Using WAV format (best Windows Media Player support)');
+      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
         mimeType = 'audio/mp4';
         fileExtension = 'mp4';
+        console.log('Using MP4 format (good Windows support)');
       } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
         mimeType = 'audio/webm;codecs=opus';
         fileExtension = 'webm';
+        console.log('Using WebM format (limited Windows support)');
       } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
         mimeType = 'audio/ogg;codecs=opus';
         fileExtension = 'ogg';
+        console.log('Using OGG format (limited Windows support)');
+      } else {
+        // Fallback to default
+        mimeType = 'audio/webm';
+        fileExtension = 'webm';
+        console.log('Using default WebM format');
       }
       
-      console.log('Using audio format:', mimeType, 'File extension:', fileExtension);
+      console.log('Final format selection:', mimeType, 'File extension:', fileExtension);
       
       // Store format information
       setState(prev => ({ ...prev, recordingFormat: fileExtension }));
       
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: mimeType,
-        audioBitsPerSecond: 128000
-      });
+      const mediaRecorderOptions: MediaRecorderOptions = {
+        mimeType: mimeType
+      };
+      
+      // Set audio quality based on format
+      if (mimeType === 'audio/wav') {
+        // WAV doesn't support audioBitsPerSecond, use default quality
+        console.log('WAV format selected - using default quality');
+      } else {
+        // For compressed formats, use moderate quality for better compatibility
+        mediaRecorderOptions.audioBitsPerSecond = 128000;
+        console.log('Compressed format - using 128kbps bitrate');
+      }
+      
+      const mediaRecorder = new MediaRecorder(stream, mediaRecorderOptions);
       
       mediaRecorderRef.current = mediaRecorder;
       
@@ -270,7 +310,7 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       error: null,
       audioChunks: [],
       recordingBlob: null,
-      recordingFormat: 'webm'
+      recordingFormat: 'wav'
     });
     startTimeRef.current = 0;
   }, [stopCapture]);
