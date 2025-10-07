@@ -117,13 +117,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
 
     // Stop system audio capture
-    stopSystemAudioCapture: (stream, mediaRecorder) => {
+    stopSystemAudioCapture: (stream) => {
         try {
             console.log('Stopping system audio capture...');
-            
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                mediaRecorder.stop();
-            }
             
             if (stream) {
                 stream.getTracks().forEach(track => {

@@ -268,12 +268,17 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
     try {
       console.log('Stopping system audio capture...');
       
+      // Stop the MediaRecorder in the renderer process
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
       }
       
+      // Stop the stream tracks in the renderer process
       if (streamRef.current) {
-        window.electronAPI?.stopSystemAudioCapture(streamRef.current, mediaRecorderRef.current!);
+        streamRef.current.getTracks().forEach(track => {
+          track.stop();
+          console.log('Stopped audio track:', track.label);
+        });
         streamRef.current = null;
       }
       
