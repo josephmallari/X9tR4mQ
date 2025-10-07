@@ -17,33 +17,66 @@ async function createWindow() {
         }
     })
 
-    // Set up display media request handler for system audio capture
+    // Set up display media request handler for system audio capture (auto-prioritize Google Meet)
     session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
         console.log('Display media request received:', request);
         console.log('Platform:', process.platform);
         
-        // For now, we'll let the custom source picker handle selection
-        // The renderer will call getAvailableSources and show the picker UI
-        // This handler will be called with the selected source
-        
-        // Default to first available screen source if no specific selection
+        // Get all available sources and prioritize Google Meet
         desktopCapturer.getSources({ 
-            types: ['screen'],
+            types: ['screen', 'window'],
             thumbnailSize: { width: 0, height: 0 },
             fetchWindowIcons: false
         }).then((sources) => {
-            if (sources.length > 0) {
-                console.log('Using default screen source:', sources[0].name);
+            console.log('Available sources:', sources.length);
+            
+            // Log all sources for debugging
+            sources.forEach((source, index) => {
+                console.log(`Source ${index}: ${source.name} (${source.id})`);
+            });
+            
+            // Prioritize Google Meet sources
+            const googleMeetSources = sources.filter(source => 
+                source.name.toLowerCase().includes('meet') ||
+                source.name.toLowerCase().includes('google') ||
+                (source.name.toLowerCase().includes('chrome') && source.name.toLowerCase().includes('meet'))
+            );
+            
+            // Then prioritize browser windows that might have Google Meet
+            const browserSources = sources.filter(source => 
+                source.name.toLowerCase().includes('chrome') ||
+                source.name.toLowerCase().includes('edge') ||
+                source.name.toLowerCase().includes('firefox') ||
+                source.name.toLowerCase().includes('browser')
+            );
+            
+            // Select the best source: Google Meet first, then browser windows, then any screen
+            let selectedSource = null;
+            
+            if (googleMeetSources.length > 0) {
+                selectedSource = googleMeetSources[0];
+                console.log('Selected Google Meet source:', selectedSource.name);
+            } else if (browserSources.length > 0) {
+                selectedSource = browserSources[0];
+                console.log('Selected browser source (might have Google Meet):', selectedSource.name);
+            } else {
+                // Fallback to first screen
+                const screenSources = sources.filter(source => source.id.startsWith('screen:'));
+                selectedSource = screenSources.length > 0 ? screenSources[0] : sources[0];
+                console.log('Selected screen source:', selectedSource?.name || 'none');
+            }
+            
+            if (selectedSource) {
                 callback({ 
-                    video: sources[0], 
-                    audio: 'loopback'
+                    video: selectedSource, 
+                    audio: 'loopback' // This captures system audio including Google Meet
                 });
             } else {
-                console.log('No screen sources available');
+                console.log('No sources available');
                 callback({ video: null, audio: null });
             }
         }).catch((error) => {
-            console.error('Error getting default source:', error);
+            console.error('Error getting sources:', error);
             callback({ video: null, audio: null });
         });
     });

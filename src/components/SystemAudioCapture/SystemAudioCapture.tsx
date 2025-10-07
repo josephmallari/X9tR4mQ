@@ -1,12 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useSystemAudioCapture } from '../../hooks/useSystemAudioCapture';
-import { SourcePicker } from '../SourcePicker/SourcePicker';
 import './SystemAudioCapture.css';
 
 export const SystemAudioCapture: React.FC = () => {
-  const [showSourcePicker, setShowSourcePicker] = useState(false);
-  const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
-  
   const {
     isCapturing,
     isPaused,
@@ -39,19 +35,7 @@ export const SystemAudioCapture: React.FC = () => {
   };
 
   const handleStartCapture = async () => {
-    // Show source picker first
-    setShowSourcePicker(true);
-  };
-
-  const handleSourceSelected = async (sourceId: string) => {
-    setSelectedSourceId(sourceId);
-    setShowSourcePicker(false);
-    console.log('Starting capture with selected source:', sourceId);
     await startCapture();
-  };
-
-  const handleSourcePickerCancel = () => {
-    setShowSourcePicker(false);
   };
 
   const handleStopCapture = () => {
@@ -161,27 +145,16 @@ export const SystemAudioCapture: React.FC = () => {
         <h4>Instructions for Google Meet Recording:</h4>
         <ul>
           <li><strong>🎯 Step 1:</strong> Join your Google Meet first</li>
-          <li><strong>📱 Step 2:</strong> Click "Start System Audio Capture" - a source picker will appear</li>
-          <li><strong>🖥️ Step 3:</strong> In the picker, select either:
-            <ul>
-              <li><strong>Entire Screen:</strong> Captures all audio from your computer</li>
-              <li><strong>Chrome/Edge Window:</strong> Captures only from the browser with Google Meet</li>
-            </ul>
-          </li>
-          <li><strong>🔊 Audio Capture:</strong> This will record ALL system audio including Google Meet participants AND your own voice</li>
+          <li><strong>📱 Step 2:</strong> Click "Start System Audio Capture" - it will automatically find Google Meet!</li>
+          <li><strong>🔊 Auto-Detection:</strong> The app automatically prioritizes Google Meet windows and browser sources</li>
+          <li><strong>🔊 Audio Capture:</strong> Records ALL system audio including Google Meet participants AND your own voice</li>
           <li><strong>⏸️ Controls:</strong> Use Pause/Resume during the meeting without losing the recording</li>
           <li><strong>⏹️ Stop:</strong> Click "Stop Capture" when the meeting ends</li>
           <li><strong>💾 Download:</strong> Get your recording in WebM format (works in VLC, Chrome, Firefox)</li>
           <li><strong>🖥️ Best Results:</strong> Works best on Windows - captures both incoming and outgoing audio</li>
+          <li><strong>✨ Smart Selection:</strong> Automatically finds Google Meet, browser windows, or falls back to screen capture</li>
         </ul>
       </div>
-
-      {/* Source Picker Modal */}
-      <SourcePicker
-        isVisible={showSourcePicker}
-        onSourceSelected={handleSourceSelected}
-        onCancel={handleSourcePickerCancel}
-      />
     </div>
   );
 };
