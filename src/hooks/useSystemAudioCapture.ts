@@ -41,7 +41,8 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
   });
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const systemAudioStreamRef = useRef<MediaStream | null>(null);
+  const microphoneStreamRef = useRef<MediaStream | null>(null);
   const startTimeRef = useRef<number>(0);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -78,17 +79,18 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
     }
 
     try {
-      console.log('Starting system audio capture...');
+      console.log('Starting system audio + microphone capture...');
       setState(prev => ({ ...prev, error: null, isCapturing: false }));
 
-      // Get system audio stream directly in renderer to avoid serialization issues
-      if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-        throw new Error('getDisplayMedia not available in this context');
+      // Get both system audio and microphone streams
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
+        throw new Error('Media devices not available in this context');
       }
 
       console.log('Requesting system audio stream for capture...');
       
-      const stream = await navigator.mediaDevices.getDisplayMedia({
+      // Get system audio stream (Google Meet participants, etc.)
+      const systemAudioStream = await navigator.mediaDevices.getDisplayMedia({
         audio: {
           echoCancellation: false,
           noiseSuppression: false,
@@ -100,10 +102,47 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       });
       
       console.log('System audio stream obtained for capture');
-      console.log('Audio tracks:', stream.getAudioTracks().length);
+      console.log('System audio tracks:', systemAudioStream.getAudioTracks().length);
+      
+      // Get microphone stream (your own voice)
+      console.log('Requesting microphone stream for capture...');
+      const microphoneStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          sampleRate: 44100,
+          channelCount: 1, // Mono for microphone
+        },
+        video: false
+      });
+      
+      console.log('Microphone stream obtained for capture');
+      console.log('Microphone tracks:', microphoneStream.getAudioTracks().length);
+      
+      // Combine both streams into one
+      const combinedStream = new MediaStream();
+      
+      // Add system audio tracks
+      systemAudioStream.getAudioTracks().forEach(track => {
+        console.log('Adding system audio track:', track.label);
+        combinedStream.addTrack(track);
+      });
+      
+      // Add microphone track
+      microphoneStream.getAudioTracks().forEach(track => {
+        console.log('Adding microphone track:', track.label);
+        combinedStream.addTrack(track);
+      });
+      
+      console.log('Combined stream created with', combinedStream.getAudioTracks().length, 'audio tracks');
+      
+      // Store individual streams for cleanup
+      systemAudioStreamRef.current = systemAudioStream;
+      microphoneStreamRef.current = microphoneStream;
       
       // Log audio track details
-      stream.getAudioTracks().forEach((track, index) => {
+      combinedStream.getAudioTracks().forEach((track, index) => {
         console.log(`Audio track ${index}:`, {
           label: track.label,
           enabled: track.enabled,
@@ -130,8 +169,6 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
         const isSupported = MediaRecorder.isTypeSupported(format);
         console.log(`${format}: ${isSupported ? '✅ Supported' : '❌ Not supported'}`);
       });
-      
-      streamRef.current = stream;
       
       // Create MediaRecorder with reliable format (WebM is most widely supported)
       let mimeType = 'audio/webm;codecs=opus';
@@ -166,7 +203,7 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       // Store format information
       setState(prev => ({ ...prev, recordingFormat: fileExtension }));
       
-      // Create MediaRecorder with optimized settings
+      // Create MediaRecorder with optimized settings using the combined stream
       const mediaRecorderOptions: MediaRecorderOptions = {
         mimeType: mimeType,
         audioBitsPerSecond: 128000
@@ -174,7 +211,7 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       
       console.log('MediaRecorder options:', mediaRecorderOptions);
       
-      const mediaRecorder = new MediaRecorder(stream, mediaRecorderOptions);
+      const mediaRecorder = new MediaRecorder(combinedStream, mediaRecorderOptions);
       
       mediaRecorderRef.current = mediaRecorder;
       
@@ -281,16 +318,27 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
         }
       }
       
-      // Stop the stream tracks in the renderer process
-      if (streamRef.current) {
-        console.log('Stopping stream tracks...');
-        streamRef.current.getTracks().forEach(track => {
+      // Stop both system audio and microphone streams
+      if (systemAudioStreamRef.current) {
+        console.log('Stopping system audio tracks...');
+        systemAudioStreamRef.current.getTracks().forEach(track => {
           if (track.readyState === 'live') {
             track.stop();
-            console.log('Stopped audio track:', track.label);
+            console.log('Stopped system audio track:', track.label);
           }
         });
-        streamRef.current = null;
+        systemAudioStreamRef.current = null;
+      }
+      
+      if (microphoneStreamRef.current) {
+        console.log('Stopping microphone tracks...');
+        microphoneStreamRef.current.getTracks().forEach(track => {
+          if (track.readyState === 'live') {
+            track.stop();
+            console.log('Stopped microphone track:', track.label);
+          }
+        });
+        microphoneStreamRef.current = null;
       }
       
       // Reset references and state
@@ -317,9 +365,13 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       
       // Force cleanup even if there was an error
       mediaRecorderRef.current = null;
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
+      if (systemAudioStreamRef.current) {
+        systemAudioStreamRef.current.getTracks().forEach(track => track.stop());
+        systemAudioStreamRef.current = null;
+      }
+      if (microphoneStreamRef.current) {
+        microphoneStreamRef.current.getTracks().forEach(track => track.stop());
+        microphoneStreamRef.current = null;
       }
       stopDurationTimer();
     }

@@ -59,7 +59,7 @@ export const SystemAudioCapture: React.FC = () => {
         <div className="status-indicator">
           <div className={`status-light ${isCapturing ? (isPaused ? 'paused' : 'recording') : 'stopped'}`}></div>
           <span className="status-text">
-            {isCapturing ? (isPaused ? 'Paused' : 'Recording System Audio') : 'Ready to Capture'}
+            {isCapturing ? (isPaused ? 'Paused' : 'Recording System Audio + Microphone') : 'Ready to Capture'}
           </span>
         </div>
         
@@ -95,7 +95,7 @@ export const SystemAudioCapture: React.FC = () => {
             onClick={handleStartCapture}
             disabled={!window.electronAPI}
           >
-            🎤 Start System Audio Capture
+            🎤 Start Audio Capture (System + Microphone)
           </button>
         ) : (
           <div className="recording-controls">
@@ -146,8 +146,9 @@ export const SystemAudioCapture: React.FC = () => {
         <ul>
           <li><strong>🎯 Step 1:</strong> Join your Google Meet first</li>
           <li><strong>📱 Step 2:</strong> Click "Start System Audio Capture" - it will automatically find Google Meet!</li>
-          <li><strong>🔊 Auto-Detection:</strong> The app automatically prioritizes Google Meet windows and browser sources</li>
-          <li><strong>🔊 Audio Capture:</strong> Records ALL system audio including Google Meet participants AND your own voice</li>
+          <li><strong>🎤 Dual Audio Capture:</strong> Records BOTH system audio (participants) AND your microphone (your voice)</li>
+          <li><strong>🔊 System Audio:</strong> Captures all Google Meet participants' voices from your speakers</li>
+          <li><strong>🎙️ Microphone:</strong> Captures your own voice directly from your microphone</li>
           <li><strong>⏸️ Controls:</strong> Use Pause/Resume during the meeting without losing the recording</li>
           <li><strong>⏹️ Stop:</strong> Click "Stop Capture" when the meeting ends</li>
           <li><strong>💾 Download:</strong> Get your recording in WebM format (works in VLC, Chrome, Firefox)</li>
