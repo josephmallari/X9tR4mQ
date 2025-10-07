@@ -17,84 +17,36 @@ async function createWindow() {
         }
     })
 
-    // Set up display media request handler for system audio capture (optimized for Google Meet)
+    // Set up display media request handler for system audio capture
     session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
         console.log('Display media request received:', request);
         console.log('Platform:', process.platform);
         
-        // Check if we're on Windows for better system audio support
-        if (process.platform === 'win32') {
-            console.log('Windows detected - enabling system audio capture for Google Meet');
-            
-            // Get both screen and window sources for better Google Meet support
-            desktopCapturer.getSources({ 
-                types: ['screen', 'window'],
-                thumbnailSize: { width: 0, height: 0 }, // Skip thumbnails for better performance
-                fetchWindowIcons: false // Skip icons for better performance
-            }).then((sources) => {
-                console.log('Available Windows sources:', sources.length);
-                
-                // Log all available sources for debugging
-                sources.forEach((source, index) => {
-                    console.log(`Source ${index}: ${source.name} (${source.id}) - Type: ${source.id.startsWith('screen:') ? 'Screen' : 'Window'}`);
+        // For now, we'll let the custom source picker handle selection
+        // The renderer will call getAvailableSources and show the picker UI
+        // This handler will be called with the selected source
+        
+        // Default to first available screen source if no specific selection
+        desktopCapturer.getSources({ 
+            types: ['screen'],
+            thumbnailSize: { width: 0, height: 0 },
+            fetchWindowIcons: false
+        }).then((sources) => {
+            if (sources.length > 0) {
+                console.log('Using default screen source:', sources[0].name);
+                callback({ 
+                    video: sources[0], 
+                    audio: 'loopback'
                 });
-                
-                // Prioritize sources that might be Google Meet or browser windows
-                const browserSources = sources.filter(source => 
-                    source.name.toLowerCase().includes('chrome') ||
-                    source.name.toLowerCase().includes('edge') ||
-                    source.name.toLowerCase().includes('firefox') ||
-                    source.name.toLowerCase().includes('meet') ||
-                    source.name.toLowerCase().includes('google') ||
-                    source.name.toLowerCase().includes('browser')
-                );
-                
-                // Use browser window if available, otherwise use first screen
-                const selectedSource = browserSources.length > 0 ? browserSources[0] : sources[0];
-                
-                if (selectedSource) {
-                    console.log('Selected source for system audio:', selectedSource.name);
-                    console.log('Source type:', selectedSource.id.startsWith('screen:') ? 'Screen' : 'Window');
-                    
-                    // Use loopback audio for system audio capture (includes Google Meet)
-                    callback({ 
-                        video: selectedSource, 
-                        audio: 'loopback' // This captures system audio including Google Meet
-                    });
-                } else {
-                    console.log('No Windows system audio sources found');
-                    callback({ video: null, audio: null });
-                }
-            }).catch((error) => {
-                console.error('Error getting Windows desktop sources:', error);
+            } else {
+                console.log('No screen sources available');
                 callback({ video: null, audio: null });
-            });
-        } else {
-            console.log('Non-Windows platform detected - limited system audio support');
-            // For non-Windows platforms, still try but with lower expectations
-            desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
-                console.log('Available sources on non-Windows:', sources.length);
-                sources.forEach((source, index) => {
-                    console.log(`Source ${index}: ${source.name} (${source.id})`);
-                });
-                
-                if (sources.length > 0) {
-                    const selectedSource = sources[0];
-                    console.log('Non-Windows source found (limited audio support):', selectedSource.name);
-                    callback({ 
-                        video: selectedSource, 
-                        audio: 'loopback' // Still try loopback audio
-                    });
-                } else {
-                    console.log('No sources found on non-Windows platform');
-                    callback({ video: null, audio: null });
-                }
-            }).catch((error) => {
-                console.error('Error on non-Windows platform:', error);
-                callback({ video: null, audio: null });
-            });
-        }
-    }, { useSystemPicker: true });
+            }
+        }).catch((error) => {
+            console.error('Error getting default source:', error);
+            callback({ video: null, audio: null });
+        });
+    });
 
     if (!app.isPackaged) {
         const url = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';

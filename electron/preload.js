@@ -132,5 +132,30 @@ contextBridge.exposeInMainWorld('electronAPI', {
         } catch (error) {
             console.error('Error stopping system audio capture:', error);
         }
+    },
+
+    // Get available media sources for selection
+    getAvailableSources: async () => {
+        try {
+            const { desktopCapturer } = require('electron');
+            
+            console.log('Getting available media sources...');
+            
+            const sources = await desktopCapturer.getSources({ 
+                types: ['screen', 'window'],
+                thumbnailSize: { width: 150, height: 150 },
+                fetchWindowIcons: true
+            });
+            
+            console.log('Available sources:', sources.length);
+            sources.forEach((source, index) => {
+                console.log(`Source ${index}: ${source.name} (${source.id})`);
+            });
+            
+            return sources;
+        } catch (error) {
+            console.error('Error getting available sources:', error);
+            throw error;
+        }
     }
 });
