@@ -142,16 +142,16 @@ export const SystemAudioCapture: React.FC = () => {
 
       {/* Instructions */}
       <div className="instructions">
-        <h4>Instructions:</h4>
+        <h4>Instructions for Google Meet Recording:</h4>
         <ul>
-          <li>Click "Start System Audio Capture" to begin recording system audio</li>
-          <li>You'll be prompted to select audio sources (screens, applications)</li>
-          <li>Use Pause/Resume to control recording without stopping</li>
-          <li>Click "Stop Capture" when finished recording</li>
-          <li>Download the recording in WebM format (widely supported)</li>
-          <li><strong>Media Players:</strong> WebM works in VLC, Chrome, Firefox, and modern players</li>
-          <li><strong>Windows Media Player:</strong> May require VLC or other modern media players</li>
-          <li><strong>Note:</strong> Best results on Windows with full system audio support</li>
+          <li><strong>🎯 For Google Meet:</strong> Join your Google Meet first, then click "Start System Audio Capture"</li>
+          <li><strong>📱 Source Selection:</strong> When prompted, select "Entire Screen" or the Chrome/Edge window with Google Meet</li>
+          <li><strong>🔊 Audio Capture:</strong> This will record ALL system audio including Google Meet participants AND your own voice</li>
+          <li><strong>⏸️ Controls:</strong> Use Pause/Resume during the meeting without losing the recording</li>
+          <li><strong>⏹️ Stop:</strong> Click "Stop Capture" when the meeting ends</li>
+          <li><strong>💾 Download:</strong> Get your recording in WebM format (works in VLC, Chrome, Firefox)</li>
+          <li><strong>🖥️ Best Results:</strong> Works best on Windows - captures both incoming and outgoing audio</li>
+          <li><strong>⚠️ Note:</strong> Make sure to select the correct screen/window when prompted for optimal audio capture</li>
         </ul>
       </div>
     </div>

@@ -268,26 +268,60 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
     try {
       console.log('Stopping system audio capture...');
       
-      // Stop the MediaRecorder in the renderer process
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        mediaRecorderRef.current.stop();
+      // Stop the MediaRecorder in the renderer process with additional safety checks
+      if (mediaRecorderRef.current) {
+        console.log('MediaRecorder state:', mediaRecorderRef.current.state);
+        
+        // Only call stop if the recorder is in a valid state
+        if (mediaRecorderRef.current.state === 'recording' || mediaRecorderRef.current.state === 'paused') {
+          console.log('Calling MediaRecorder.stop()');
+          mediaRecorderRef.current.stop();
+        } else {
+          console.log('MediaRecorder not in recording/paused state, skipping stop()');
+        }
       }
       
       // Stop the stream tracks in the renderer process
       if (streamRef.current) {
+        console.log('Stopping stream tracks...');
         streamRef.current.getTracks().forEach(track => {
-          track.stop();
-          console.log('Stopped audio track:', track.label);
+          if (track.readyState === 'live') {
+            track.stop();
+            console.log('Stopped audio track:', track.label);
+          }
         });
         streamRef.current = null;
       }
       
+      // Reset references and state
       mediaRecorderRef.current = null;
       stopDurationTimer();
       
+      // Update state to reflect stopping
+      setState(prev => ({
+        ...prev,
+        isCapturing: false,
+        isPaused: false
+      }));
+      
+      console.log('System audio capture stopped successfully');
+      
     } catch (error) {
       console.error('Error stopping system audio capture:', error);
-      setState(prev => ({ ...prev, error: 'Error stopping capture' }));
+      setState(prev => ({ 
+        ...prev, 
+        error: `Error stopping capture: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        isCapturing: false,
+        isPaused: false
+      }));
+      
+      // Force cleanup even if there was an error
+      mediaRecorderRef.current = null;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      stopDurationTimer();
     }
   }, [stopDurationTimer]);
 
