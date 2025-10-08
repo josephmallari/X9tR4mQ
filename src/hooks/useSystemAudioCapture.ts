@@ -43,6 +43,7 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const systemAudioStreamRef = useRef<MediaStream | null>(null);
   const microphoneStreamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
   const startTimeRef = useRef<number>(0);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -120,31 +121,36 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       
       console.log('Microphone stream obtained for capture');
       console.log('Microphone tracks:', microphoneStream.getAudioTracks().length);
-      
-      // Combine both streams into one
-      const combinedStream = new MediaStream();
-      
-      // Add system audio tracks
-      systemAudioStream.getAudioTracks().forEach(track => {
-        console.log('Adding system audio track:', track.label);
-        combinedStream.addTrack(track);
-      });
-      
-      // Add microphone track
-      microphoneStream.getAudioTracks().forEach(track => {
-        console.log('Adding microphone track:', track.label);
-        combinedStream.addTrack(track);
-      });
-      
-      console.log('Combined stream created with', combinedStream.getAudioTracks().length, 'audio tracks');
-      
+
       // Store individual streams for cleanup
       systemAudioStreamRef.current = systemAudioStream;
       microphoneStreamRef.current = microphoneStream;
-      
+
+      // Create AudioContext to mix both streams
+      console.log('Creating Web Audio API mixer for system audio + microphone...');
+      const audioContext = new AudioContext({ sampleRate: 44100 });
+      audioContextRef.current = audioContext;
+
+      // Create sources from both streams
+      const systemAudioSource = audioContext.createMediaStreamSource(systemAudioStream);
+      const microphoneSource = audioContext.createMediaStreamSource(microphoneStream);
+
+      // Create a destination to mix both sources
+      const destination = audioContext.createMediaStreamDestination();
+
+      // Connect both sources to the destination (this mixes them)
+      systemAudioSource.connect(destination);
+      microphoneSource.connect(destination);
+
+      // The mixed stream
+      const mixedStream = destination.stream;
+
+      console.log('Audio streams mixed successfully');
+      console.log('Mixed stream tracks:', mixedStream.getAudioTracks().length);
+
       // Log audio track details
-      combinedStream.getAudioTracks().forEach((track, index) => {
-        console.log(`Audio track ${index}:`, {
+      mixedStream.getAudioTracks().forEach((track, index) => {
+        console.log(`Mixed audio track ${index}:`, {
           label: track.label,
           enabled: track.enabled,
           muted: track.muted,
@@ -211,8 +217,8 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       };
       
       console.log('MediaRecorder options:', mediaRecorderOptions);
-      
-      const mediaRecorder = new MediaRecorder(combinedStream, mediaRecorderOptions);
+
+      const mediaRecorder = new MediaRecorder(mixedStream, mediaRecorderOptions);
       
       mediaRecorderRef.current = mediaRecorder;
       
@@ -322,6 +328,13 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
         }
       }
       
+      // Close AudioContext
+      if (audioContextRef.current) {
+        console.log('Closing AudioContext...');
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+
       // Stop both system audio and microphone streams
       if (systemAudioStreamRef.current) {
         console.log('Stopping system audio tracks...');
@@ -333,7 +346,7 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
         });
         systemAudioStreamRef.current = null;
       }
-      
+
       if (microphoneStreamRef.current) {
         console.log('Stopping microphone tracks...');
         microphoneStreamRef.current.getTracks().forEach(track => {
@@ -369,6 +382,10 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       
       // Force cleanup even if there was an error
       mediaRecorderRef.current = null;
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
       if (systemAudioStreamRef.current) {
         systemAudioStreamRef.current.getTracks().forEach(track => track.stop());
         systemAudioStreamRef.current = null;
