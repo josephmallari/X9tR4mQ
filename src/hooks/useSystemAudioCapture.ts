@@ -45,6 +45,7 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
   const microphoneStreamRef = useRef<MediaStream | null>(null);
   const startTimeRef = useRef<number>(0);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const updateDuration = useCallback(() => {
     setState(prev => {
@@ -223,9 +224,10 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       mediaRecorder.ondataavailable = (event) => {
         console.log('Audio data available:', event.data.size, 'bytes');
         if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
           setState(prev => ({
             ...prev,
-            audioChunks: [...prev.audioChunks, event.data]
+            audioChunks: [...audioChunksRef.current]
           }));
         }
       };
@@ -233,6 +235,7 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       mediaRecorder.onstart = () => {
         console.log('System audio recording started');
         startTimeRef.current = Date.now();
+        audioChunksRef.current = [];
         setState(prev => ({
           ...prev,
           isCapturing: true,
@@ -246,21 +249,22 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       mediaRecorder.onstop = () => {
         console.log('System audio recording stopped');
         stopDurationTimer();
-        
-        // Create audio blob with detected format
-        const audioBlob = new Blob(state.audioChunks, { 
+
+        // Create audio blob with detected format using ref (not stale state)
+        const audioBlob = new Blob(audioChunksRef.current, {
           type: mimeType
         });
-        
+
         setState(prev => ({
           ...prev,
           isCapturing: false,
           isPaused: false,
           recordingBlob: audioBlob
         }));
-        
+
         console.log('System audio recording blob created:', audioBlob.size, 'bytes');
         console.log('Recording format:', fileExtension);
+        console.log('Total chunks used:', audioChunksRef.current.length);
       };
 
       mediaRecorder.onerror = (event) => {
@@ -391,6 +395,7 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
 
   const resetCapture = useCallback(() => {
     stopCapture();
+    audioChunksRef.current = [];
     setState({
       isCapturing: false,
       isPaused: false,
