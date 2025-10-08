@@ -144,14 +144,14 @@ export const SystemAudioCapture: React.FC = () => {
 
         {(recordingBlob || audioChunks.length > 0) && (
           <div className="post-capture-controls">
-            <button 
+            <button
               className="control-button download-button"
               onClick={downloadRecording}
               disabled={!recordingBlob}
             >
               💾 Download Recording ({recordingFormat.toUpperCase()})
             </button>
-            <button 
+            <button
               className="control-button reset-button"
               onClick={resetCapture}
             >
@@ -160,6 +160,21 @@ export const SystemAudioCapture: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Audio Playback */}
+      {recordingBlob && (
+        <div className="audio-playback">
+          <h4>🎧 Test Playback (verify both system audio + microphone are present):</h4>
+          <audio
+            controls
+            src={URL.createObjectURL(recordingBlob)}
+            style={{ width: '100%', marginTop: '10px' }}
+          />
+          <p style={{ fontSize: '12px', color: '#6c757d', marginTop: '5px' }}>
+            ⚠️ Listen carefully: You should hear BOTH other participants AND your own voice
+          </p>
+        </div>
+      )}
 
       {/* Error Display */}
       {error && (

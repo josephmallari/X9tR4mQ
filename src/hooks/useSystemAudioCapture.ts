@@ -170,6 +170,11 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       micGain.connect(micAnalyser);
       micAnalyser.connect(destination);
 
+      console.log('Audio graph connected:');
+      console.log('  System Audio -> Gain (1.0x) -> Analyser -> Destination');
+      console.log('  Microphone   -> Gain (1.5x) -> Analyser -> Destination');
+      console.log('Both sources are mixed into the destination stream');
+
       // Log audio levels periodically
       const checkAudioLevels = () => {
         const systemDataArray = new Uint8Array(systemAnalyser.frequencyBinCount);
@@ -214,6 +219,11 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
           constraints: track.getConstraints()
         });
       });
+
+      // Verify the destination stream has the mixed audio
+      console.log('Destination stream ID:', destination.stream.id);
+      console.log('Destination has', destination.stream.getAudioTracks().length, 'audio track(s)');
+      console.log('This mixed track contains BOTH system audio and microphone audio');
       
       // Log all supported MediaRecorder formats
       console.log('Checking MediaRecorder format support:');
