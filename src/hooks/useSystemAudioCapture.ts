@@ -8,6 +8,8 @@ interface SystemAudioCaptureState {
   audioChunks: Blob[];
   recordingBlob: Blob | null;
   recordingFormat: string;
+  systemAudioLevel: number;
+  microphoneLevel: number;
 }
 
 interface SystemAudioCaptureResult {
@@ -19,7 +21,9 @@ interface SystemAudioCaptureResult {
   audioChunks: Blob[];
   recordingBlob: Blob | null;
   recordingFormat: string;
-  
+  systemAudioLevel: number;
+  microphoneLevel: number;
+
   // Functions
   startCapture: () => Promise<void>;
   stopCapture: () => void;
@@ -37,7 +41,9 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
     error: null,
     audioChunks: [],
     recordingBlob: null,
-    recordingFormat: 'webm'
+    recordingFormat: 'webm',
+    systemAudioLevel: 0,
+    microphoneLevel: 0
   });
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -135,17 +141,66 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       const systemAudioSource = audioContext.createMediaStreamSource(systemAudioStream);
       const microphoneSource = audioContext.createMediaStreamSource(microphoneStream);
 
+      // Create gain nodes to control volume and verify signal
+      const systemGain = audioContext.createGain();
+      const micGain = audioContext.createGain();
+
+      // Set gain values (1.0 = 100%, you can boost mic if needed)
+      systemGain.gain.value = 1.0; // System audio at normal volume
+      micGain.gain.value = 1.5;    // Boost microphone by 50% to ensure it's audible
+
+      console.log('System audio gain:', systemGain.gain.value);
+      console.log('Microphone gain:', micGain.gain.value);
+
+      // Create analyzer nodes to monitor audio levels
+      const systemAnalyser = audioContext.createAnalyser();
+      const micAnalyser = audioContext.createAnalyser();
+      systemAnalyser.fftSize = 256;
+      micAnalyser.fftSize = 256;
+
       // Create a destination to mix both sources
       const destination = audioContext.createMediaStreamDestination();
 
-      // Connect both sources to the destination (this mixes them)
-      systemAudioSource.connect(destination);
-      microphoneSource.connect(destination);
+      // Connect the audio graph: source -> gain -> analyser -> destination
+      systemAudioSource.connect(systemGain);
+      systemGain.connect(systemAnalyser);
+      systemAnalyser.connect(destination);
+
+      microphoneSource.connect(micGain);
+      micGain.connect(micAnalyser);
+      micAnalyser.connect(destination);
+
+      // Log audio levels periodically
+      const checkAudioLevels = () => {
+        const systemDataArray = new Uint8Array(systemAnalyser.frequencyBinCount);
+        const micDataArray = new Uint8Array(micAnalyser.frequencyBinCount);
+
+        systemAnalyser.getByteFrequencyData(systemDataArray);
+        micAnalyser.getByteFrequencyData(micDataArray);
+
+        const systemLevel = systemDataArray.reduce((a, b) => a + b, 0) / systemDataArray.length;
+        const micLevel = micDataArray.reduce((a, b) => a + b, 0) / micDataArray.length;
+
+        console.log(`Audio levels - System: ${systemLevel.toFixed(1)}, Microphone: ${micLevel.toFixed(1)}`);
+
+        // Update state with audio levels for visual feedback
+        setState(prev => ({
+          ...prev,
+          systemAudioLevel: systemLevel,
+          microphoneLevel: micLevel
+        }));
+      };
+
+      // Check levels every 100ms for responsive meter
+      const levelCheckInterval = setInterval(checkAudioLevels, 100);
+
+      // Store interval for cleanup
+      (audioContext as any).levelCheckInterval = levelCheckInterval;
 
       // The mixed stream
       const mixedStream = destination.stream;
 
-      console.log('Audio streams mixed successfully');
+      console.log('Audio streams mixed successfully with gain control');
       console.log('Mixed stream tracks:', mixedStream.getAudioTracks().length);
 
       // Log audio track details
@@ -331,6 +386,10 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       // Close AudioContext
       if (audioContextRef.current) {
         console.log('Closing AudioContext...');
+        // Clear the level check interval
+        if ((audioContextRef.current as any).levelCheckInterval) {
+          clearInterval((audioContextRef.current as any).levelCheckInterval);
+        }
         audioContextRef.current.close();
         audioContextRef.current = null;
       }
@@ -383,6 +442,9 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       // Force cleanup even if there was an error
       mediaRecorderRef.current = null;
       if (audioContextRef.current) {
+        if ((audioContextRef.current as any).levelCheckInterval) {
+          clearInterval((audioContextRef.current as any).levelCheckInterval);
+        }
         audioContextRef.current.close();
         audioContextRef.current = null;
       }
@@ -420,7 +482,9 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       error: null,
       audioChunks: [],
       recordingBlob: null,
-      recordingFormat: 'webm'
+      recordingFormat: 'webm',
+      systemAudioLevel: 0,
+      microphoneLevel: 0
     });
     startTimeRef.current = 0;
   }, [stopCapture]);

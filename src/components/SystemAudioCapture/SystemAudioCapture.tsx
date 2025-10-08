@@ -11,6 +11,8 @@ export const SystemAudioCapture: React.FC = () => {
     audioChunks,
     recordingBlob,
     recordingFormat,
+    systemAudioLevel,
+    microphoneLevel,
     startCapture,
     stopCapture,
     pauseCapture,
@@ -62,13 +64,39 @@ export const SystemAudioCapture: React.FC = () => {
             {isCapturing ? (isPaused ? 'Paused' : 'Recording System Audio + Microphone') : 'Ready to Capture'}
           </span>
         </div>
-        
+
         {isCapturing && (
           <div className="duration-display">
             <strong>Duration:</strong> {formatDuration(duration)}
           </div>
         )}
       </div>
+
+      {/* Audio Level Meters */}
+      {isCapturing && (
+        <div className="audio-meters">
+          <div className="audio-meter">
+            <label>🔊 System Audio:</label>
+            <div className="meter-bar">
+              <div
+                className="meter-fill system-meter"
+                style={{ width: `${Math.min(100, (systemAudioLevel / 128) * 100)}%` }}
+              />
+            </div>
+            <span className="meter-value">{systemAudioLevel.toFixed(0)}</span>
+          </div>
+          <div className="audio-meter">
+            <label>🎤 Microphone:</label>
+            <div className="meter-bar">
+              <div
+                className="meter-fill mic-meter"
+                style={{ width: `${Math.min(100, (microphoneLevel / 128) * 100)}%` }}
+              />
+            </div>
+            <span className="meter-value">{microphoneLevel.toFixed(0)}</span>
+          </div>
+        </div>
+      )}
 
       {/* Recording Info */}
       {(audioChunks.length > 0 || recordingBlob) && (

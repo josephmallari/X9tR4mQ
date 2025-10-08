@@ -213,3 +213,60 @@
   margin-bottom: 0;
   font-weight: bold;
 }
+
+.audio-meters {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.audio-meter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.audio-meter label {
+  min-width: 140px;
+  font-weight: 600;
+  color: #495057;
+  font-size: 14px;
+}
+
+.meter-bar {
+  flex: 1;
+  height: 24px;
+  background-color: #e9ecef;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.meter-fill {
+  height: 100%;
+  transition: width 0.1s ease-out;
+  border-radius: 12px;
+}
+
+.meter-fill.system-meter {
+  background: linear-gradient(90deg, #28a745 0%, #20c997 50%, #ffc107 100%);
+}
+
+.meter-fill.mic-meter {
+  background: linear-gradient(90deg, #007bff 0%, #6610f2 50%, #dc3545 100%);
+}
+
+.meter-value {
+  min-width: 40px;
+  text-align: right;
+  font-weight: 600;
+  color: #495057;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+}
