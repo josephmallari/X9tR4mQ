@@ -1,10 +1,12 @@
 import { useRef, useEffect } from "react";
+import RecordingControls from "./components/RecordingControls/RecordingControls";
 import PlaybackControls from "./components/PlaybackControls/PlaybackControls";
 import WaveformVisualizer from "./components/WaveformVisualizer/WaveformVisualizer";
 import type { WaveformVisualizerRef } from "./components/WaveformVisualizer/WaveformVisualizer";
 import LiveTranscriptionDisplay from "./components/LiveTranscriptionDisplay/LiveTranscriptionDisplay";
 import TranscriptionDisplay from "./components/TranscriptionDisplay/TranscriptionDisplay";
 import { SystemAudioDetection } from "./components/SystemAudioDetection/SystemAudioDetection";
+import { SystemAudioCapture } from "./components/SystemAudioCapture/SystemAudioCapture";
 import { useAudioRecorder } from "./hooks/useAudioRecorder";
 import "./App.css";
 
@@ -18,6 +20,14 @@ function App() {
     audioElementRef,
     transcriptionState,
     liveTranscriptionState,
+
+    // recording functions
+    startRecording,
+    stopRecording,
+    pauseRecording,
+    resumeRecording,
+    resetRecording,
+    downloadRecording,
 
     // playback functions
     playRecording,
@@ -58,8 +68,19 @@ function App() {
 
       <SystemAudioDetection />
 
+      <SystemAudioCapture />
 
       <WaveformVisualizer ref={waveformRef} />
+
+      <RecordingControls
+        recordingState={recordingState}
+        onStartRecording={startRecording}
+        onStopRecording={stopRecording}
+        onPauseRecording={pauseRecording}
+        onResumeRecording={resumeRecording}
+        onResetRecording={resetRecording}
+        onDownloadRecording={downloadRecording}
+      />
 
       <LiveTranscriptionDisplay
         liveTranscriptionState={liveTranscriptionState}
