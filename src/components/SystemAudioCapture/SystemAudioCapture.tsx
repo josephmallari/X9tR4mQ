@@ -183,22 +183,6 @@ export const SystemAudioCapture: React.FC = () => {
         </div>
       )}
 
-      {/* Instructions */}
-      <div className="instructions">
-        <h4>Instructions for Google Meet Recording:</h4>
-        <ul>
-          <li><strong>🎯 Step 1:</strong> Join your Google Meet first</li>
-          <li><strong>📱 Step 2:</strong> Click "Start System Audio Capture" - it will automatically find Google Meet!</li>
-          <li><strong>🎤 Dual Audio Capture:</strong> Records BOTH system audio (participants) AND your microphone (your voice)</li>
-          <li><strong>🔊 System Audio:</strong> Captures all Google Meet participants' voices from your speakers</li>
-          <li><strong>🎙️ Microphone:</strong> Captures your own voice directly from your microphone</li>
-          <li><strong>⏸️ Controls:</strong> Use Pause/Resume during the meeting without losing the recording</li>
-          <li><strong>⏹️ Stop:</strong> Click "Stop Capture" when the meeting ends</li>
-          <li><strong>💾 Download:</strong> Get your recording in WebM format (works in VLC, Chrome, Firefox)</li>
-          <li><strong>🖥️ Best Results:</strong> Works best on Windows - captures both incoming and outgoing audio</li>
-          <li><strong>✨ Smart Selection:</strong> Automatically finds Google Meet, browser windows, or falls back to screen capture</li>
-        </ul>
-      </div>
     </div>
   );
 };

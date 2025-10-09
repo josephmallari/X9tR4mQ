@@ -1,5 +1,4 @@
 import { useRef, useEffect } from "react";
-import RecordingControls from "./components/RecordingControls/RecordingControls";
 import PlaybackControls from "./components/PlaybackControls/PlaybackControls";
 import WaveformVisualizer from "./components/WaveformVisualizer/WaveformVisualizer";
 import type { WaveformVisualizerRef } from "./components/WaveformVisualizer/WaveformVisualizer";
@@ -72,15 +71,6 @@ function App() {
 
       <WaveformVisualizer ref={waveformRef} />
 
-      <RecordingControls
-        recordingState={recordingState}
-        onStartRecording={startRecording}
-        onStopRecording={stopRecording}
-        onPauseRecording={pauseRecording}
-        onResumeRecording={resumeRecording}
-        onResetRecording={resetRecording}
-        onDownloadRecording={downloadRecording}
-      />
 
       <LiveTranscriptionDisplay
         liveTranscriptionState={liveTranscriptionState}
