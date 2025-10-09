@@ -20,14 +20,6 @@ function App() {
     transcriptionState,
     liveTranscriptionState,
 
-    // recording functions
-    startRecording,
-    stopRecording,
-    pauseRecording,
-    resumeRecording,
-    resetRecording,
-    downloadRecording,
-
     // playback functions
     playRecording,
     pausePlayback,
