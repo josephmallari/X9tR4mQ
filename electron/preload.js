@@ -34,44 +34,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
         }
     },
 
-    // Detect system audio (without capturing)
+    // Note: detectSystemAudio is now handled directly in the renderer
+    // because navigator.mediaDevices.getDisplayMedia must be called from renderer context
+    // This function is kept for backward compatibility but will throw an informative error
     detectSystemAudio: async () => {
-        try {
-            console.log('Attempting to detect system audio...');
-            
-            if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-                throw new Error('getDisplayMedia not available in this context');
-            }
-            
-            // Request display media to trigger the handler
-            const stream = await navigator.mediaDevices.getDisplayMedia({
-                audio: true,
-                video: false
-            });
-            
-            const audioTracks = stream.getAudioTracks();
-            console.log('System audio detected:', audioTracks.length > 0);
-            
-            if (audioTracks.length > 0) {
-                const track = audioTracks[0];
-                console.log('Audio track details:', {
-                    label: track.label,
-                    enabled: track.enabled,
-                    muted: track.muted,
-                    readyState: track.readyState,
-                    settings: track.getSettings(),
-                    constraints: track.getConstraints()
-                });
-            }
-            
-            // Stop the stream immediately since we're just detecting
-            stream.getTracks().forEach(track => track.stop());
-            
-            return audioTracks.length > 0;
-        } catch (error) {
-            console.error('Failed to detect system audio:', error);
-            return false;
-        }
+        throw new Error('detectSystemAudio must be called directly from renderer using navigator.mediaDevices.getDisplayMedia');
     },
 
     // Get system audio stream (for actual capture)

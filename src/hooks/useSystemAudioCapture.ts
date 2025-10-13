@@ -81,114 +81,130 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
   }, []);
 
   const startCapture = useCallback(async () => {
-    if (!window.electronAPI) {
-      setState(prev => ({ ...prev, error: 'Electron API not available' }));
-      return;
-    }
-
     try {
-      console.log('Starting system audio + microphone capture...');
+      console.log('Starting system audio + microphone capture with native ScreenCaptureKit...');
       setState(prev => ({ ...prev, error: null, isCapturing: false }));
 
-      // Get both system audio and microphone streams
-      if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
-        throw new Error('Media devices not available in this context');
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        throw new Error('getDisplayMedia not available - please use a modern browser or Electron');
       }
 
-      console.log('Requesting system audio stream for capture...');
-      
-      // Get system audio stream (Google Meet participants, etc.)
-      const systemAudioStream = await navigator.mediaDevices.getDisplayMedia({
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
-          sampleRate: 44100,
-          channelCount: 2,
-        },
-        video: false
-      });
-      
-      console.log('System audio stream obtained for capture');
-      console.log('System audio tracks:', systemAudioStream.getAudioTracks().length);
-      
-      // Get microphone stream (your own voice)
-      console.log('Requesting microphone stream for capture...');
+      // Get system audio stream using getDisplayMedia with ScreenCaptureKit (macOS 12.3+)
+      console.log('Requesting system audio stream via getDisplayMedia...');
+      console.log('A system picker dialog should appear - select a window/screen and check "Share audio"');
+
+      let systemAudioStream: MediaStream;
+      try {
+        systemAudioStream = await navigator.mediaDevices.getDisplayMedia({
+          audio: true,
+          video: true
+        });
+
+        console.log('User selected a source');
+        console.log('Stream tracks - Video:', systemAudioStream.getVideoTracks().length, 'Audio:', systemAudioStream.getAudioTracks().length);
+
+        // Remove video track immediately (we only need audio)
+        const videoTracks = systemAudioStream.getVideoTracks();
+        videoTracks.forEach(track => {
+          console.log('Stopping video track:', track.label);
+          track.stop();
+          systemAudioStream.removeTrack(track);
+        });
+
+        console.log('System audio stream obtained successfully');
+        console.log('System audio tracks:', systemAudioStream.getAudioTracks().length);
+
+        if (systemAudioStream.getAudioTracks().length === 0) {
+          console.warn('No audio tracks in system stream - user may not have checked "Share audio"');
+        }
+      } catch (error) {
+        console.error('Failed to get system audio stream:', error);
+        console.log('User may have cancelled or "Share audio" was not selected');
+        console.log('Continuing with microphone-only recording');
+        systemAudioStream = new MediaStream();
+      }
+
+      // Get microphone stream
+      console.log('Requesting microphone stream...');
       const microphoneStream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: false,
           noiseSuppression: false,
           autoGainControl: false,
-          sampleRate: 44100,
+          sampleRate: 48000,
           channelCount: 1, // Mono for microphone
         },
         video: false
       });
-      
-      console.log('Microphone stream obtained for capture');
+
+      console.log('Microphone stream obtained successfully');
       console.log('Microphone tracks:', microphoneStream.getAudioTracks().length);
 
-      // Store individual streams for cleanup
+      // Store streams for cleanup
       systemAudioStreamRef.current = systemAudioStream;
       microphoneStreamRef.current = microphoneStream;
 
       // Create AudioContext to mix both streams
-      console.log('Creating Web Audio API mixer for system audio + microphone...');
-      const audioContext = new AudioContext({ sampleRate: 44100 });
+      console.log('Creating Web Audio API mixer...');
+      const audioContext = new AudioContext({ sampleRate: 48000 });
       audioContextRef.current = audioContext;
 
-      // Create sources from both streams
-      const systemAudioSource = audioContext.createMediaStreamSource(systemAudioStream);
-      const microphoneSource = audioContext.createMediaStreamSource(microphoneStream);
+      // Create sources
+      const micSource = audioContext.createMediaStreamSource(microphoneStream);
 
-      // Create gain nodes to control volume and verify signal
-      const systemGain = audioContext.createGain();
+      // Create gain nodes
       const micGain = audioContext.createGain();
+      micGain.gain.value = 1.5; // Boost mic slightly
 
-      // Set gain values (1.0 = 100%, you can boost mic if needed)
-      systemGain.gain.value = 1.0; // System audio at normal volume
-      micGain.gain.value = 1.5;    // Boost microphone by 50% to ensure it's audible
-
-      console.log('System audio gain:', systemGain.gain.value);
-      console.log('Microphone gain:', micGain.gain.value);
-
-      // Create analyzer nodes to monitor audio levels
-      const systemAnalyser = audioContext.createAnalyser();
+      // Create analyzer nodes for visual feedback
       const micAnalyser = audioContext.createAnalyser();
-      systemAnalyser.fftSize = 256;
       micAnalyser.fftSize = 256;
 
-      // Create a destination to mix both sources
+      // Create destination stream
       const destination = audioContext.createMediaStreamDestination();
 
-      // Connect the audio graph: source -> gain -> analyser -> destination
-      systemAudioSource.connect(systemGain);
-      systemGain.connect(systemAnalyser);
-      systemAnalyser.connect(destination);
-
-      microphoneSource.connect(micGain);
+      // Connect microphone: source -> gain -> analyser -> destination
+      micSource.connect(micGain);
       micGain.connect(micAnalyser);
       micAnalyser.connect(destination);
 
-      console.log('Audio graph connected:');
-      console.log('  System Audio -> Gain (1.0x) -> Analyser -> Destination');
-      console.log('  Microphone   -> Gain (1.5x) -> Analyser -> Destination');
-      console.log('Both sources are mixed into the destination stream');
+      // Handle system audio if available
+      let systemSource = null;
+      let systemGain = null;
+      let systemAnalyser = null;
 
-      // Log audio levels periodically
+      if (systemAudioStream.getAudioTracks().length > 0) {
+        console.log('System audio available, connecting to mixer');
+        systemSource = audioContext.createMediaStreamSource(systemAudioStream);
+        systemGain = audioContext.createGain();
+        systemAnalyser = audioContext.createAnalyser();
+
+        systemGain.gain.value = 1.0;
+        systemAnalyser.fftSize = 256;
+
+        // Connect system audio: source -> gain -> analyser -> destination
+        systemSource.connect(systemGain);
+        systemGain.connect(systemAnalyser);
+        systemAnalyser.connect(destination);
+      } else {
+        console.log('No system audio, recording microphone only');
+      }
+
+      console.log('Audio graph connected successfully');
+
+      // Monitor audio levels
       const checkAudioLevels = () => {
-        const systemDataArray = new Uint8Array(systemAnalyser.frequencyBinCount);
         const micDataArray = new Uint8Array(micAnalyser.frequencyBinCount);
-
-        systemAnalyser.getByteFrequencyData(systemDataArray);
         micAnalyser.getByteFrequencyData(micDataArray);
-
-        const systemLevel = systemDataArray.reduce((a, b) => a + b, 0) / systemDataArray.length;
         const micLevel = micDataArray.reduce((a, b) => a + b, 0) / micDataArray.length;
 
-        console.log(`Audio levels - System: ${systemLevel.toFixed(1)}, Microphone: ${micLevel.toFixed(1)}`);
+        let systemLevel = 0;
+        if (systemAnalyser) {
+          const systemDataArray = new Uint8Array(systemAnalyser.frequencyBinCount);
+          systemAnalyser.getByteFrequencyData(systemDataArray);
+          systemLevel = systemDataArray.reduce((a, b) => a + b, 0) / systemDataArray.length;
+        }
 
-        // Update state with audio levels for visual feedback
         setState(prev => ({
           ...prev,
           systemAudioLevel: systemLevel,
@@ -196,104 +212,38 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
         }));
       };
 
-      // Check levels every 100ms for responsive meter
       const levelCheckInterval = setInterval(checkAudioLevels, 100);
-
-      // Store interval for cleanup
       (audioContext as any).levelCheckInterval = levelCheckInterval;
 
       // The mixed stream
       const mixedStream = destination.stream;
-
-      console.log('Audio streams mixed successfully with gain control');
       console.log('Mixed stream tracks:', mixedStream.getAudioTracks().length);
 
-      // Log audio track details
-      mixedStream.getAudioTracks().forEach((track, index) => {
-        console.log(`Mixed audio track ${index}:`, {
-          label: track.label,
-          enabled: track.enabled,
-          muted: track.muted,
-          readyState: track.readyState,
-          settings: track.getSettings(),
-          constraints: track.getConstraints()
-        });
-      });
-
-      // Verify the destination stream has the mixed audio
-      console.log('Destination stream ID:', destination.stream.id);
-      console.log('Destination has', destination.stream.getAudioTracks().length, 'audio track(s)');
-      console.log('This mixed track contains BOTH system audio and microphone audio');
-      
-      // Log all supported MediaRecorder formats
-      console.log('Checking MediaRecorder format support:');
-      const formatsToCheck = [
-        'audio/wav',
-        'audio/mp4',
-        'audio/mpeg',
-        'audio/webm;codecs=opus',
-        'audio/webm;codecs=vp8',
-        'audio/ogg;codecs=opus',
-        'audio/ogg;codecs=vorbis'
-      ];
-      
-      formatsToCheck.forEach(format => {
-        const isSupported = MediaRecorder.isTypeSupported(format);
-        console.log(`${format}: ${isSupported ? '✅ Supported' : '❌ Not supported'}`);
-      });
-      
-      // Create MediaRecorder with reliable format (WebM is most widely supported)
+      // Determine best format
       let mimeType = 'audio/webm;codecs=opus';
       let fileExtension = 'webm';
-      
-      // Try different formats, prioritizing reliability over Windows Media Player
+
       if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
         mimeType = 'audio/webm;codecs=opus';
         fileExtension = 'webm';
-        console.log('Using WebM Opus format (reliable cross-platform support)');
-      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
-        mimeType = 'audio/webm';
-        fileExtension = 'webm';
-        console.log('Using basic WebM format');
       } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
         mimeType = 'audio/mp4';
         fileExtension = 'mp4';
-        console.log('Using MP4 format');
-      } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
-        mimeType = 'audio/ogg;codecs=opus';
-        fileExtension = 'ogg';
-        console.log('Using OGG Opus format');
-      } else {
-        // Fallback to basic webm
-        mimeType = 'audio/webm';
-        fileExtension = 'webm';
-        console.log('Using fallback WebM format');
       }
-      
-      console.log('Final format selection:', mimeType, 'File extension:', fileExtension);
-      
-      // Store format information
+
+      console.log('Recording format:', mimeType);
       setState(prev => ({ ...prev, recordingFormat: fileExtension }));
-      
-      // Create MediaRecorder with optimized settings using the combined stream
-      const mediaRecorderOptions: MediaRecorderOptions = {
+
+      // Create MediaRecorder
+      const mediaRecorder = new MediaRecorder(mixedStream, {
         mimeType: mimeType,
         audioBitsPerSecond: 128000
-      };
-      
-      console.log('MediaRecorder options:', mediaRecorderOptions);
+      });
 
-      const mediaRecorder = new MediaRecorder(mixedStream, mediaRecorderOptions);
-      
       mediaRecorderRef.current = mediaRecorder;
-      
-      console.log('MediaRecorder created in renderer process');
-      console.log('MediaRecorder state:', mediaRecorder.state);
-      console.log('Supported MIME types:', MediaRecorder.isTypeSupported('audio/webm;codecs=opus'));
 
-      // Set up MediaRecorder event handlers
+      // MediaRecorder event handlers
       mediaRecorder.ondataavailable = (event) => {
-        console.log('Audio data available:', event.data.size, 'bytes');
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
           setState(prev => ({
@@ -304,7 +254,7 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       };
 
       mediaRecorder.onstart = () => {
-        console.log('System audio recording started');
+        console.log('Recording started');
         startTimeRef.current = Date.now();
         audioChunksRef.current = [];
         setState(prev => ({
@@ -318,14 +268,10 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       };
 
       mediaRecorder.onstop = () => {
-        console.log('System audio recording stopped');
+        console.log('Recording stopped');
         stopDurationTimer();
 
-        // Create audio blob with detected format using ref (not stale state)
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: mimeType
-        });
-
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
         setState(prev => ({
           ...prev,
           isCapturing: false,
@@ -333,9 +279,7 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
           recordingBlob: audioBlob
         }));
 
-        console.log('System audio recording blob created:', audioBlob.size, 'bytes');
-        console.log('Recording format:', fileExtension);
-        console.log('Total chunks used:', audioChunksRef.current.length);
+        console.log('Recording blob created:', audioBlob.size, 'bytes');
       };
 
       mediaRecorder.onerror = (event) => {
@@ -350,23 +294,24 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       };
 
       mediaRecorder.onpause = () => {
-        console.log('System audio recording paused');
+        console.log('Recording paused');
         setState(prev => ({ ...prev, isPaused: true }));
         stopDurationTimer();
       };
 
       mediaRecorder.onresume = () => {
-        console.log('System audio recording resumed');
+        console.log('Recording resumed');
         setState(prev => ({ ...prev, isPaused: false }));
         startDurationTimer();
       };
 
       // Start recording
-      mediaRecorder.start(1000); // Collect data every second
+      mediaRecorder.start(1000);
+      console.log('MediaRecorder started');
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Failed to start system audio capture:', error);
+      console.error('Failed to start capture:', error);
       setState(prev => ({
         ...prev,
         error: errorMessage,
@@ -374,29 +319,19 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
         isPaused: false
       }));
     }
-  }, [state.audioChunks, startDurationTimer, stopDurationTimer]);
+  }, [startDurationTimer, stopDurationTimer]);
 
   const stopCapture = useCallback(() => {
     try {
-      console.log('Stopping system audio capture...');
-      
-      // Stop the MediaRecorder in the renderer process with additional safety checks
+      console.log('Stopping capture...');
+
       if (mediaRecorderRef.current) {
-        console.log('MediaRecorder state:', mediaRecorderRef.current.state);
-        
-        // Only call stop if the recorder is in a valid state
         if (mediaRecorderRef.current.state === 'recording' || mediaRecorderRef.current.state === 'paused') {
-          console.log('Calling MediaRecorder.stop()');
           mediaRecorderRef.current.stop();
-        } else {
-          console.log('MediaRecorder not in recording/paused state, skipping stop()');
         }
       }
-      
-      // Close AudioContext
+
       if (audioContextRef.current) {
-        console.log('Closing AudioContext...');
-        // Clear the level check interval
         if ((audioContextRef.current as any).levelCheckInterval) {
           clearInterval((audioContextRef.current as any).levelCheckInterval);
         }
@@ -404,69 +339,35 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
         audioContextRef.current = null;
       }
 
-      // Stop both system audio and microphone streams
       if (systemAudioStreamRef.current) {
-        console.log('Stopping system audio tracks...');
-        systemAudioStreamRef.current.getTracks().forEach(track => {
-          if (track.readyState === 'live') {
-            track.stop();
-            console.log('Stopped system audio track:', track.label);
-          }
-        });
+        systemAudioStreamRef.current.getTracks().forEach(track => track.stop());
         systemAudioStreamRef.current = null;
       }
 
       if (microphoneStreamRef.current) {
-        console.log('Stopping microphone tracks...');
-        microphoneStreamRef.current.getTracks().forEach(track => {
-          if (track.readyState === 'live') {
-            track.stop();
-            console.log('Stopped microphone track:', track.label);
-          }
-        });
+        microphoneStreamRef.current.getTracks().forEach(track => track.stop());
         microphoneStreamRef.current = null;
       }
-      
-      // Reset references and state
+
       mediaRecorderRef.current = null;
       stopDurationTimer();
-      
-      // Update state to reflect stopping
+
       setState(prev => ({
         ...prev,
         isCapturing: false,
         isPaused: false
       }));
-      
-      console.log('System audio capture stopped successfully');
-      
+
+      console.log('Capture stopped successfully');
+
     } catch (error) {
-      console.error('Error stopping system audio capture:', error);
-      setState(prev => ({ 
-        ...prev, 
+      console.error('Error stopping capture:', error);
+      setState(prev => ({
+        ...prev,
         error: `Error stopping capture: ${error instanceof Error ? error.message : 'Unknown error'}`,
         isCapturing: false,
         isPaused: false
       }));
-      
-      // Force cleanup even if there was an error
-      mediaRecorderRef.current = null;
-      if (audioContextRef.current) {
-        if ((audioContextRef.current as any).levelCheckInterval) {
-          clearInterval((audioContextRef.current as any).levelCheckInterval);
-        }
-        audioContextRef.current.close();
-        audioContextRef.current = null;
-      }
-      if (systemAudioStreamRef.current) {
-        systemAudioStreamRef.current.getTracks().forEach(track => track.stop());
-        systemAudioStreamRef.current = null;
-      }
-      if (microphoneStreamRef.current) {
-        microphoneStreamRef.current.getTracks().forEach(track => track.stop());
-        microphoneStreamRef.current = null;
-      }
-      stopDurationTimer();
     }
   }, [stopDurationTimer]);
 
@@ -504,16 +405,12 @@ export function useSystemAudioCapture(): SystemAudioCaptureResult {
       const url = URL.createObjectURL(state.recordingBlob);
       const a = document.createElement('a');
       a.href = url;
-      
-      // Use the stored recording format for file extension
-      const extension = state.recordingFormat;
-      
-      a.download = `system-audio-${new Date().toISOString().replace(/[:.]/g, '-')}.${extension}`;
+      a.download = `recording-${new Date().toISOString().replace(/[:.]/g, '-')}.${state.recordingFormat}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      console.log(`System audio recording downloaded as .${extension}`);
+      console.log(`Recording downloaded as .${state.recordingFormat}`);
     }
   }, [state.recordingBlob, state.recordingFormat]);
 
